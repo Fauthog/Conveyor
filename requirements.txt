@@ -1,0 +1,4 @@
+customtkinter
+tk
+python-tkdnd
+opencv-python
