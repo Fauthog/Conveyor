@@ -1,4 +1,3 @@
-from pynput.keyboard import Key, Listener
 from threading import Thread
 import RPi.GPIO as GPIO
 import time
@@ -38,7 +37,7 @@ class governor():
         self.max_acceleration_per_step = 1 # max 250 rpm/step 
         #  magic numbers end
 
-        self.startup()
+        #self.startup()
 
 
     def driver(self, QueueShutdown, QueueStop, QueueSetpoint, QueueCurrentPosition)->None:
@@ -70,7 +69,8 @@ class governor():
                 stop = QueueStop.get()
             if not QueueSetpoint.empty():
                 position_setpoint, speed_setpoint = QueueSetpoint.get()
-
+                #print("driver", position_setpoint, speed_setpoint, current_position)
+            
             if not stop:              
                 
                 # simple controller
@@ -78,11 +78,12 @@ class governor():
                 error_abs = abs(position_error)
                 
                 if 50 <= error_abs <=100:
-                    speed_setpoint = min(self.medium_speed, self.speed_setpoint)
+                    speed_setpoint = min(self.medium_speed, speed_setpoint)
                 if error_abs <= 10:
-                    speed_setpoint = min(self.low_speed, self.speed_setpoint)
+                    speed_setpoint = min(self.low_speed, speed_setpoint)
                 if error_abs < 1:
-                    self.active = False
+                    speed_setpoint = 0
+                    current_speed = 0    
                 if position_error < 0:
                         speed_setpoint = -speed_setpoint # if we need to move in reverse, we have to use a negative speed_setpoint
                 # limit acceleration
@@ -95,9 +96,9 @@ class governor():
                 else:
                     limited_speed = current_speed + speed_error
 
-                print("driver", position_error, limited_speed)
-                lower_limit_lock:bool = (self.current_position == self.x_min) and (limited_speed < 0)
-                upper_limit_lock:bool = (self.current_position == self.x_max) and (limited_speed > 0)
+                # print("driver", position_error, current_position, limited_speed, speed_error)
+                lower_limit_lock:bool = (current_position == self.x_min) and (limited_speed < 0)
+                upper_limit_lock:bool = (current_position == self.x_max) and (limited_speed > 0)
                 if not lower_limit_lock or upper_limit_lock:
                     if limited_speed < 0:
                         GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
@@ -118,35 +119,35 @@ class governor():
                         self.high_precision_sleep(delay)
                     
                     current_speed = limited_speed
-                    QueueCurrentPosition.put(current_position)                
+                                   
 
             else:
                 # ramp down to stop
-                if current_speed is not 0:                    
-                    if limited_speed > 0:
-                        limited_speed = max(current_speed-60, 0) 
-                        GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
-                        delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
-                        GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                        self.high_precision_sleep(delay)
-                        current_position +=1
-                        GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        self.high_precision_sleep(delay)
-                        current_speed = limited_speed
+                if current_speed > 1:  
+                    limited_speed = max(current_speed-60, 1) 
+                    GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
+                    delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
+                    GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                    self.high_precision_sleep(delay)
+                    current_position +=1
+                    GPIO.output(self.STEP_PIN, GPIO.LOW)
+                    self.high_precision_sleep(delay)
+                    current_speed = limited_speed
 
-                    elif limited_speed < 0:
-                        limited_speed = min(current_speed+60, 0)
-                        GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
-                        delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
-                        GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                        self.high_precision_sleep(delay)
-                        current_position -= 1
-                        GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        self.high_precision_sleep(delay)
-                        current_speed = limited_speed
+                elif current_speed < -1:
+                    limited_speed = min(current_speed+60, -1)
+                    GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
+                    delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
+                    GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                    self.high_precision_sleep(delay)
+                    current_position -= 1
+                    GPIO.output(self.STEP_PIN, GPIO.LOW)
+                    self.high_precision_sleep(delay)
+                    current_speed = limited_speed
                 else:
                     # if we are stopped, we wait for stop:bool to be false
                     time.sleep(0.05)
+            QueueCurrentPosition.put(current_position) 
 				
     def current_position_converter(self,QueueShutdown, QueueCurrentPosition)->None:
         print("convert position")
@@ -159,17 +160,16 @@ class governor():
                 return
             if not QueueCurrentPosition.empty():
                 position = QueueCurrentPosition.get()
-                while(not QueueCurrentPosition.empty()):                   
-                    try:
-                        position = QueueCurrentPosition.get()
-                    except:
-                        ...
+                #while(not QueueCurrentPosition.empty()):                   
+                #    try:
+                #        position = QueueCurrentPosition.get()
+                #    except:
+                #        ...
                 self.current_position_in_mm = position * self.mm_per_step
             else:
                 time.sleep(0.005)
 
-    def get_current_position(self)->float:
-        print("get_current_position")
+    def get_current_position(self)->float:        
         return self.current_position_in_mm 
     
     def goto(self, position:float, speed:int)->None:
@@ -200,8 +200,10 @@ class governor():
     def statemachine(self, QueueShutdown)->None:
         shutdown:bool = False
         current_state:str = ""
+        x:int = 0.0
         while True:
             self.state = current_state
+            #print(self.state)
             if not QueueShutdown.empty():
                 shutdown = QueueShutdown.get()
             if shutdown:  
@@ -216,32 +218,38 @@ class governor():
                     if self.current_position_in_mm <=0.1:
                         current_state = "start"
                 case "start":
-                    self.QueueSetPoint.put([0, 60])
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 400])
                     if self.current_position_in_mm >10:
                         current_state = "synchronize speed"
                 case "synchronize speed":
-                    self.QueueSetPoint.put([300, 400])
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 400])
                     if self.current_position_in_mm > 100:                        
                         current_state = "pickup shrimp"
                 case "pickup shrimp":
-                    self.QueueSetPoint.put([300, 400])
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 400])
                     if self.current_position_in_mm > 150:                       
                         current_state = "analyze shrimp"
                 case "analyze shrimp":
-                    self.QueueSetPoint.put([300, 200])
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 200])
                     if self.current_position_in_mm > 200:                       
                         current_state = "belly cut"
                 case "belly cut":
-                    self.QueueSetPoint.put([300, 200])
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 200])
                     if self.current_position_in_mm > 250:                       
                         current_state = "drop off"
                 case "drop off":
-                    self.QueueSetPoint.put([300, 300]) 
+                    x = int(302/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 300]) 
                     if self.current_position_in_mm > 300:                       
                         current_state = "return to start"
                 case "return to start":
-                    self.QueueSetPoint.put([0, 400])
-                    if self.current_position_in_mm <=0.1:
+                    self.QueueSetPoint.put([0, 60])
+                    if self.current_position_in_mm <=1:
                         current_state = "start"                     
                 case _:
                    current_state = "reset"
@@ -249,7 +257,8 @@ class governor():
            
     
     def getCurrentState(self)->str:
-        return self.state      
+        # t = self.state + " " + str(self.current_position_in_mm)
+        return self.state
 
         
 
@@ -263,7 +272,7 @@ class governor():
         picam2.configure(config)
         # picam.configure("video")
 
-        picam2.start_preview(Preview.Null)
+        #picam2.start_preview(Preview.Null)
         picam2.start()
         while True:
             if not QueueShutdown.empty():
@@ -343,8 +352,8 @@ class governor():
         self.QueueShutdown.put(True)
         self.QueueShutdown.put(True)
 
-        for process in self.process_list:
-            process.join()
+        #for process in self.process_list:
+        #    process.join()
 
         while (not self.QueueShutdown.empty()):
                 self.QueueShutdown.get()

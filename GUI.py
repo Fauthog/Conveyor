@@ -53,7 +53,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.currentFrame_thread = None
         self.StopState:bool = False
         self.On:bool = False
-        self.ctrl = conveyor_controller.conveyor_controller()
+       
         self.logo_frame = customtkinter.CTkFrame(self)
         self.logo_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="sw")
 
@@ -95,54 +95,72 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.current_state_label = customtkinter.CTkLabel(self.state_frame,  text="current state")
         self.current_state_label.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.govenor = conveyor_controller.governor()
+        self.governor = conveyor_controller.governor()
+        #self.governor = None
+        self.start_label.configure(state="disabled")
+        self.stop_label.configure(state="disabled")
+        self.reset_label.configure(state="disabled")
 
     def getCurrentFrame(self):
         while True:
             if self.StopThread:
                 return
-            time.sleep(0.033)
-            image = self.ctrl.getCurrentImage()
+            time.sleep(0.1)
+            image = self.governor.getCurrentImage()
             if image is not None:                
                 _image = customtkinter.CTkImage(light_image=image,
                                     dark_image=image,
                                     size=(320, 240))
                 self.preview_frame_image.configure(image = _image)
-            state = self.ctrl.getCurrentstate()
+            state = self.governor.getCurrentState()
             self.current_state_label.configure(text = state)
 
     def update(self):
+        self.StopThread = False
         self.currentFrame_thread = Thread(target = self.getCurrentFrame)
         self.currentFrame_thread.start()
 
 
     def start_callback(self):
-        self.govenor.start()
+        self.governor.start_controller()
         
 
     def stop_callback(self):
         if not self.StopState:
-            self.govenor.stop()
+            self.governor.stop_controller()
             self.stop_label.configure(text = "resume")
             self.StopState=True
         else:
-            self.govenor.resume()
+            self.governor.resume_controller()
             self.stop_label.configure(text = "stop")
             self.StopState=False
         
     
     def reset_callback(self):
-        self.govenor.reset()
+        self.governor.reset()
 
     def OnOff_callback(self):
-        if self.On:
-            self.govenor.OnOff("On")
-            self.update()
-        else:
-            self.govenor.OnOff("Off")
-            self.StopThread = True
-            if self.currentFrame_thread is not None:
-                self.currentFrame_thread.join()
+        if not self.On:
+                self.On=True
+                self.OnOff_label.configure(text = "Off")
+                self.start_label.configure(state="enabled")
+                self.stop_label.configure(state="enabled")
+                self.reset_label.configure(state="enabled")
+                self.governor.OnOff("On")
+                self.update()          
+                
+        else:   
+                self.On = False
+                self.OnOff_label.configure(text = "On")
+                self.start_label.configure(state="disabled")
+                self.stop_label.configure(state="disabled")
+                self.reset_label.configure(state="disabled")
+                time.sleep(0.1)
+                self.governor.OnOff("Off")
+                self.StopThread = True
+                #if self.currentFrame_thread is not None:
+                #       self.currentFrame_thread.join()
+                        
 
 class Options_TabFrame(customtkinter.CTkFrame):
     def __init__(self, master, logo):
