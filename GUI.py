@@ -3,12 +3,9 @@ import tkinter.messagebox
 import customtkinter
 import os
 import time
-from datetime import datetime
-import threading
 from PIL import Image
-import cv2
-# import A1_driver
-# from picamera2 import Picamera2
+from threading import Thread
+import conveyor_controller
 
 
 
@@ -52,22 +49,100 @@ class GUI_TabFrame(customtkinter.CTkFrame):
     def __init__(self, master, logo):
         super().__init__(master)
 
-        self.GUI_frame = customtkinter.CTkFrame(self)
-        self.GUI_frame.grid(row=0, column=3, padx=10, pady=(10, 0), sticky="sw")
+        self.StopThread:bool = False
+        self.currentFrame_thread = None
+        self.StopState:bool = False
+        self.On:bool = False
+        self.ctrl = conveyor_controller.conveyor_controller()
+        self.logo_frame = customtkinter.CTkFrame(self)
+        self.logo_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="sw")
 
         
         self.logo_image = logo
-        self.navigation_frame_label = customtkinter.CTkLabel(self.GUI_frame, image=self.logo_image, text="")
-        self.navigation_frame_label.grid(row=0, column=0, padx=20, pady=20)
+        self.navigation_frame_label = customtkinter.CTkLabel(self.logo_frame, image=self.logo_image, text="Logo")
+        self.navigation_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.start_label = customtkinter.CTkButton(self.GUI_frame, text="Start", anchor="s")
+        self.Preview_frame = customtkinter.CTkFrame(self, height = 500)
+        self.Preview_frame.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.preview_frame_label = customtkinter.CTkLabel(self.Preview_frame,  text="Preview")
+        self.preview_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        self.preview_frame_image = customtkinter.CTkLabel(self.Preview_frame, width=240, text="")
+        self.preview_frame_image.grid(row=1, column=0, padx=(20,20), pady=(20,20))
+
+        self.control_frame = customtkinter.CTkFrame(self)
+        self.control_frame.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.control_frame_label = customtkinter.CTkLabel(self.control_frame,  text="control")
+        self.control_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        
+        self.start_label = customtkinter.CTkButton(self.control_frame, text="Start", anchor="s", command=self.start_callback)
         self.start_label.grid(row=3, column=0, padx=20, pady=(10, 0))
 
-        self.stop_label = customtkinter.CTkButton(self.GUI_frame, text="Stop", anchor="s")
+        self.stop_label = customtkinter.CTkButton(self.control_frame, text="Stop", anchor="s", command=self.stop_callback)
         self.stop_label.grid(row=3, column=1, padx=20, pady=(10, 0))
 
-        self.reset_label = customtkinter.CTkButton(self.GUI_frame, text="Reset", anchor="s")
+        self.reset_label = customtkinter.CTkButton(self.control_frame, text="Reset", anchor="s", command=self.reset_callback)
         self.reset_label.grid(row=3, column=2, padx=20, pady=(10, 0))
+
+        self.OnOff_label = customtkinter.CTkButton(self.control_frame, text="On", anchor="s", command=self.OnOff_callback)
+        self.OnOff_label.grid(row=3, column=3, padx=20, pady=(10, 0))
+    
+
+        self.state_frame = customtkinter.CTkFrame(self)
+        self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state")
+        self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.current_state_label = customtkinter.CTkLabel(self.state_frame,  text="current state")
+        self.current_state_label.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.govenor = conveyor_controller.governor()
+
+    def getCurrentFrame(self):
+        while True:
+            if self.StopThread:
+                return
+            time.sleep(0.033)
+            image = self.ctrl.getCurrentImage()
+            if image is not None:                
+                _image = customtkinter.CTkImage(light_image=image,
+                                    dark_image=image,
+                                    size=(320, 240))
+                self.preview_frame_image.configure(image = _image)
+            state = self.ctrl.getCurrentstate()
+            self.current_state_label.configure(text = state)
+
+    def update(self):
+        self.currentFrame_thread = Thread(target = self.getCurrentFrame)
+        self.currentFrame_thread.start()
+
+
+    def start_callback(self):
+        self.govenor.start()
+        
+
+    def stop_callback(self):
+        if not self.StopState:
+            self.govenor.stop()
+            self.stop_label.configure(text = "resume")
+            self.StopState=True
+        else:
+            self.govenor.resume()
+            self.stop_label.configure(text = "stop")
+            self.StopState=False
+        
+    
+    def reset_callback(self):
+        self.govenor.reset()
+
+    def OnOff_callback(self):
+        if self.On:
+            self.govenor.OnOff("On")
+            self.update()
+        else:
+            self.govenor.OnOff("Off")
+            self.StopThread = True
+            if self.currentFrame_thread is not None:
+                self.currentFrame_thread.join()
 
 class Options_TabFrame(customtkinter.CTkFrame):
     def __init__(self, master, logo):
