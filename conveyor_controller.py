@@ -34,7 +34,7 @@ class governor():
         self.low_speed:int = 60
         self.medium_speed:int = 250
         self.high_speed:int = 600
-        self.max_acceleration_per_step = 1 # max 250 rpm/step 
+        self.max_acceleration_per_step = 25 # max 250 rpm/step 
         #  magic numbers end
 
         #self.startup()
@@ -104,19 +104,23 @@ class governor():
                         GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
                         delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
                         GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                        self.high_precision_sleep(delay)
+                        #self.high_precision_sleep(delay)
+                        time.sleep(delay)
                         current_position -= 1
                         GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        self.high_precision_sleep(delay)
+                        #self.high_precision_sleep(delay)
+                        time.sleep(delay)
 
                     elif limited_speed > 0:
                         GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
                         delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
                         GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                        self.high_precision_sleep(delay)
+                        #self.high_precision_sleep(delay)
+                        time.sleep(delay)
                         current_position +=1
                         GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        self.high_precision_sleep(delay)
+                        #self.high_precision_sleep(delay)
+                        time.sleep(delay)
                     
                     current_speed = limited_speed
                                    
@@ -128,10 +132,12 @@ class governor():
                     GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
                     delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
                     GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                    self.high_precision_sleep(delay)
+                    #self.high_precision_sleep(delay)
+                    time.sleep(delay)
                     current_position +=1
                     GPIO.output(self.STEP_PIN, GPIO.LOW)
-                    self.high_precision_sleep(delay)
+                    #self.high_precision_sleep(delay)
+                    time.sleep(delay)
                     current_speed = limited_speed
 
                 elif current_speed < -1:
@@ -139,10 +145,12 @@ class governor():
                     GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
                     delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
                     GPIO.output(self.STEP_PIN, GPIO.HIGH)
-                    self.high_precision_sleep(delay)
+                    #self.high_precision_sleep(delay)
+                    time.sleep(delay)
                     current_position -= 1
                     GPIO.output(self.STEP_PIN, GPIO.LOW)
-                    self.high_precision_sleep(delay)
+                    #self.high_precision_sleep(delay)
+                    time.sleep(delay)
                     current_speed = limited_speed
                 else:
                     # if we are stopped, we wait for stop:bool to be false
@@ -186,6 +194,7 @@ class governor():
             self.active=True	
 
     def start_controller(self)->None:
+        self.ResetState = False
         self.QueueStop.put(False)
 
     def stop_controller(self)->None:
@@ -211,11 +220,11 @@ class governor():
                 return
             if self.ResetState:
                 current_state = "reset"
-            
+                
             match current_state:
                 case "reset":
                     self.QueueSetPoint.put([0, 60])
-                    if self.current_position_in_mm <=0.1:
+                    if self.current_position_in_mm <=1:
                         current_state = "start"
                 case "start":
                     x = int(302/self.mm_per_step)
@@ -248,7 +257,7 @@ class governor():
                     if self.current_position_in_mm > 300:                       
                         current_state = "return to start"
                 case "return to start":
-                    self.QueueSetPoint.put([0, 60])
+                    self.QueueSetPoint.put([0, 600])
                     if self.current_position_in_mm <=1:
                         current_state = "start"                     
                 case _:
@@ -257,8 +266,8 @@ class governor():
            
     
     def getCurrentState(self)->str:
-        # t = self.state + " " + str(self.current_position_in_mm)
-        return self.state
+        t = self.state + " " + str(self.current_position_in_mm)
+        return t
 
         
 
@@ -267,10 +276,10 @@ class governor():
         shutdown:bool = False
 
         picam2 = Picamera2()
-        # config = picam.create_preview_configuration(main={"format":'XRGB8888', "size":(720,480)}, controls={'FrameRate':120})
-        config = picam2.create_preview_configuration()
+        config = picam2.create_preview_configuration(main={"format":'XRGB8888', "size":(720,480)}, controls={'FrameRate':120})
+        #config = picam2.create_preview_configuration()
         picam2.configure(config)
-        # picam.configure("video")
+        #picam2.configure("video")
 
         #picam2.start_preview(Preview.Null)
         picam2.start()
@@ -372,8 +381,10 @@ class governor():
 
 
 
-# def main()->None:   
+def main()->None:   
+    ctrl = governor()
+    ctrl.OnOff("On")
+    ctrl.start_controller()
 
-
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

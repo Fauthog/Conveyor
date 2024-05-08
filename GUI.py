@@ -18,7 +18,7 @@ class App(customtkinter.CTk):
        
         
         # configure window
-        self.title("HSF Lab Multi Tool.py")
+        self.title("GUI")
         self.geometry(f"{1920}x{900}")
 
         # configure grid layout (4x4)
@@ -87,9 +87,9 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.OnOff_label.grid(row=3, column=3, padx=20, pady=(10, 0))
     
 
-        self.state_frame = customtkinter.CTkFrame(self)
+        self.state_frame = customtkinter.CTkFrame(self, width=200)
         self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
-        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state")
+        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state", width=500)
         self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
         self.current_state_label = customtkinter.CTkLabel(self.state_frame,  text="current state")
@@ -103,17 +103,17 @@ class GUI_TabFrame(customtkinter.CTkFrame):
 
     def getCurrentFrame(self):
         while True:
-            if self.StopThread:
-                return
-            time.sleep(0.1)
-            image = self.governor.getCurrentImage()
-            if image is not None:                
-                _image = customtkinter.CTkImage(light_image=image,
-                                    dark_image=image,
-                                    size=(320, 240))
-                self.preview_frame_image.configure(image = _image)
-            state = self.governor.getCurrentState()
-            self.current_state_label.configure(text = state)
+                if self.StopThread:
+                        return
+                #time.sleep(0.1)
+                #print("state", self.governor.state)
+                image = self.governor.convertedImage
+                if image is not None:                
+                        _image = customtkinter.CTkImage(light_image=image,
+                                     size=(320, 240))
+                        self.preview_frame_image.configure(image = _image)
+                state = self.governor.state
+                self.current_state_label.configure(text = state)
 
     def update(self):
         self.StopThread = False
