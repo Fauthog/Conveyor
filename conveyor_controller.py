@@ -49,6 +49,7 @@ class governor():
         # Define GPIO pins
         self.STEP_PIN = 18
         self.DIR_PIN = 27
+        
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.STEP_PIN, GPIO.OUT)
@@ -59,6 +60,7 @@ class governor():
         speed_setpoint:int = 0
         
         while (True):
+            start_time = time.perf_counter()
             if not QueueShutdown.empty():
                 shutdown = QueueShutdown.get()
             if shutdown:  
@@ -99,28 +101,67 @@ class governor():
                 # print("driver", position_error, current_position, limited_speed, speed_error)
                 lower_limit_lock:bool = (current_position == self.x_min) and (limited_speed < 0)
                 upper_limit_lock:bool = (current_position == self.x_max) and (limited_speed > 0)
+                if lower_limit_lock:
+                    print("lower", current_speed, limited_speed)
+                    limited_speed = 0
+                    speed_setpoint = 0
+                    current_speed = limited_speed
                 if not lower_limit_lock or upper_limit_lock:
                     if limited_speed < 0:
+                        # GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
+                        # delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limited_speed))
+                        # GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                        # #self.high_precision_sleep(delay)
+                        # time.sleep(delay)
+                        # current_position -= 1
+                        # GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        # #self.high_precision_sleep(delay)
+                        # time.sleep(delay)
+
                         GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
-                        delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
+                        delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limited_speed))
+                        call_time_delta = time.perf_counter() - start_time
+                        delta_delay = delay - call_time_delta
+                        GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        #self.high_precision_sleep(delay)
+                        if 0 <= delta_delay <0.03:
+                            time.sleep(delta_delay)
+                        else:
+                            time.sleep(delay)
+                        # time.sleep(delay)
+                        current_position -= 1
                         GPIO.output(self.STEP_PIN, GPIO.HIGH)
                         #self.high_precision_sleep(delay)
                         time.sleep(delay)
-                        current_position -= 1
                         GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        #self.high_precision_sleep(delay)
-                        time.sleep(delay)
 
                     elif limited_speed > 0:
+                        # GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
+                        # delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
+                        # GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                        # #self.high_precision_sleep(delay)
+                        # time.sleep(delay)
+                        # current_position +=1
+                        # GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        # #self.high_precision_sleep(delay)
+                        # time.sleep(delay)
+
                         GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
-                        delay:float = 0.5 * 60.0 / (self.steps_per_rev * limited_speed)
+                        delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limited_speed))
+                        call_time_delta = time.perf_counter() - start_time
+                        delta_delay = delay - call_time_delta
+                        # print("d", delta_delay)
+                        GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        #self.high_precision_sleep(delay)
+                        if 0 <= delta_delay <0.03:
+                            time.sleep(delta_delay)
+                        else:
+                            time.sleep(delay)
+                        current_position += 1
                         GPIO.output(self.STEP_PIN, GPIO.HIGH)
                         #self.high_precision_sleep(delay)
                         time.sleep(delay)
-                        current_position +=1
                         GPIO.output(self.STEP_PIN, GPIO.LOW)
-                        #self.high_precision_sleep(delay)
-                        time.sleep(delay)
                     
                     current_speed = limited_speed
                                    
@@ -143,7 +184,7 @@ class governor():
                 elif current_speed < -1:
                     limited_speed = min(current_speed+60, -1)
                     GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
-                    delay:float = 60.0 / (self.steps_per_rev * abs(limited_speed))
+                    delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limited_speed))
                     GPIO.output(self.STEP_PIN, GPIO.HIGH)
                     #self.high_precision_sleep(delay)
                     time.sleep(delay)
@@ -206,10 +247,17 @@ class governor():
     def reset(self)->None: #go back to initial state
         self.ResetState = True
 
-    def statemachine(self, QueueShutdown)->None:
+    def statemachine(self, QueueShutdown, QueueCorrectionFromCV)->None:
         shutdown:bool = False
         current_state:str = ""
         x:int = 0.0
+        delta_x:float = 0
+        delta_v:int = 0
+        
+        SERVO_PIN = 5
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(SERVO_PIN, GPIO.OUT)
+
         while True:
             self.state = current_state
             #print(self.state)
@@ -220,44 +268,53 @@ class governor():
                 return
             if self.ResetState:
                 current_state = "reset"
-                
+            if not QueueCorrectionFromCV.empty():
+                delta_x, delta_v = QueueCorrectionFromCV.get()    
             match current_state:
                 case "reset":
-                    self.QueueSetPoint.put([0, 60])
+                    self.QueueSetPoint.put([1, 60])
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm <=1:
                         current_state = "start"
                 case "start":
                     x = int(302/self.mm_per_step)
                     self.QueueSetPoint.put([x, 400])
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm >10:
                         current_state = "synchronize speed"
                 case "synchronize speed":
-                    x = int(302/self.mm_per_step)
+                    x = int(342/self.mm_per_step)
                     self.QueueSetPoint.put([x, 400])
-                    if self.current_position_in_mm > 100:                        
+                    GPIO.output(SERVO_PIN, GPIO.HIGH)
+                    if self.current_position_in_mm > 50:                        
                         current_state = "pickup shrimp"
                 case "pickup shrimp":
-                    x = int(302/self.mm_per_step)
+                    x = int(342/self.mm_per_step)
                     self.QueueSetPoint.put([x, 400])
-                    if self.current_position_in_mm > 150:                       
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
+                    if self.current_position_in_mm > 100:                       
                         current_state = "analyze shrimp"
                 case "analyze shrimp":
-                    x = int(302/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 200])
-                    if self.current_position_in_mm > 200:                       
+                    x = int(342/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 200 + delta_v])
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
+                    if self.current_position_in_mm > 250:                       
                         current_state = "belly cut"
                 case "belly cut":
-                    x = int(302/self.mm_per_step)
+                    x = int(342/self.mm_per_step)
                     self.QueueSetPoint.put([x, 200])
-                    if self.current_position_in_mm > 250:                       
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
+                    if self.current_position_in_mm > 300:                       
                         current_state = "drop off"
                 case "drop off":
-                    x = int(302/self.mm_per_step)
+                    x = int((342 + delta_x)/self.mm_per_step)
                     self.QueueSetPoint.put([x, 300]) 
-                    if self.current_position_in_mm > 300:                       
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
+                    if self.current_position_in_mm > 340:                       
                         current_state = "return to start"
                 case "return to start":
-                    self.QueueSetPoint.put([0, 600])
+                    self.QueueSetPoint.put([1, 600])
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm <=1:
                         current_state = "start"                     
                 case _:
@@ -280,7 +337,7 @@ class governor():
         #config = picam2.create_preview_configuration()
         picam2.configure(config)
         #picam2.configure("video")
-
+        framecounter:int = 0
         #picam2.start_preview(Preview.Null)
         picam2.start()
         while True:
@@ -291,11 +348,60 @@ class governor():
                     picam2.close()
                     return
             
-            img = picam2.capture_array()
-            QueueCurrentFrame.put(img)
+            # Read the image as color
+            color_image = picam2.capture_array()
+           
+          
+            # Define the region of interest (ROI) - rows 100 to 360
+            roi = color_image[100:360, :]
+            
+            # Convert the ROI to grayscale
+            gray_image = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            
+            # Apply Gaussian blur to the grayscale ROI
+            blurred_image = cv2.GaussianBlur(gray_image, (3, 3), 0)
+            
+            # Invert the blurred grayscale image
+            inverted_gray_image = 255 - blurred_image
+            
+            # Apply binary thresholding to the inverted image
+            _, thresh_image = cv2.threshold(inverted_gray_image, 127, 255, cv2.THRESH_BINARY)
+            
+            # Find all contours in the thresholded image
+            contours, _ = cv2.findContours(thresh_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # Print the number of contours detected
+            # print(f"Number of contours detected: {len(contours)}")
+            
+            # Draw contours on the original color ROI
+            result = roi.copy()
+            cv2.drawContours(result, contours, -1, (0, 255, 0), 2)
+            
+            # Find the rightmost contour
+            rightmost_contour = max(contours, key=lambda c: cv2.boundingRect(c)[0] + cv2.boundingRect(c)[2])
+            
+            # Get the rightmost pixel in the rightmost contour
+            rightmost_point = tuple(rightmost_contour[rightmost_contour[:,:,0].argmax()][0])
+            
+            # Print the location of the rightmost pixel
+            # print(f"Location of the rightmost pixel: {rightmost_point}")
+            
+            # Visualize the rightmost pixel with a small red vertical line (50 pixels long)
+            result_with_point = result.copy()
+            cv2.line(result_with_point, rightmost_point, (rightmost_point[0], rightmost_point[1] - 50), (0, 0, 255), 2)
+            
+            # Replace the ROI in the original image with the result
+            output_image = color_image.copy()
+            output_image[100:360, :] = result_with_point
+            # cv2.imwrite("test.jpg", output_image)
+
+            framecounter += 1
+            if framecounter == 20:
+                framecounter = 0
+                QueueCurrentFrame.put(output_image)
 
             
-            QueueCorrectionFromCV.put([0.0, 0.0]) #[float position, float speed]
+            QueueCorrectionFromCV.put([0.0, 0]) #[float position, int speed]
             
        
     def convertCapturedImage(self, QueueShutdown, QueueCurrentFrame)->None:
@@ -315,7 +421,8 @@ class governor():
                         frame = QueueCurrentFrame.get()
                     except:
                         ...
-                opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+                opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                cv2.imwrite("test.jpg", opencv_image)
                 self.convertedImage = Image.fromarray(opencv_image)
             else:
                 time.sleep(0.005)  
@@ -345,7 +452,7 @@ class governor():
         process = Thread(target=self.convertCapturedImage, args=(self.QueueShutdown, self.QueueCurrentFrame,))
         self.process_list.append(process) 
 
-        process = Thread(target=self.statemachine, args=(self.QueueShutdown,))
+        process = Thread(target=self.statemachine, args=(self.QueueShutdown, self.QueueCorrectionFromCV,))
         self.process_list.append(process)
         
         for process in self.process_list:

@@ -102,16 +102,19 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.reset_label.configure(state="disabled")
 
     def getCurrentFrame(self):
+        image = None
         while True:
                 if self.StopThread:
                         return
-                #time.sleep(0.1)
+                time.sleep(0.1)
                 #print("state", self.governor.state)
-                image = self.governor.convertedImage
-                if image is not None:                
-                        _image = customtkinter.CTkImage(light_image=image,
-                                     size=(320, 240))
-                        self.preview_frame_image.configure(image = _image)
+                _i = self.governor.convertedImage
+                if _i != image:
+                    image=_i
+                    if image is not None:                
+                            _image = customtkinter.CTkImage(light_image=image,
+                                        size=(320, 240))
+                            self.preview_frame_image.configure(image = _image)
                 state = self.governor.state
                 self.current_state_label.configure(text = state)
 
