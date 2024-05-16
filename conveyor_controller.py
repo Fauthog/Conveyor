@@ -21,6 +21,9 @@ class governor():
         self.convertedImage = None
         self.ResetState:bool = False
         self.state:str = "reset"
+        self.speedFactor:float = 1.0
+        self.continuesMode:bool = False
+       
 
         # magic numbers start
         self.steps_per_rev:int = 400
@@ -47,13 +50,14 @@ class governor():
         current_position:int = 0
         # setup GPIO
         # Define GPIO pins
-        self.STEP_PIN = 18
-        self.DIR_PIN = 27
-        
+        STEP_PIN = 18
+        DIR_PIN = 27
+        LL_PIN = 3
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.STEP_PIN, GPIO.OUT)
-        GPIO.setup(self.DIR_PIN, GPIO.OUT)
+        GPIO.setup(STEP_PIN, GPIO.OUT)
+        GPIO.setup(DIR_PIN, GPIO.OUT)
+        GPIO.setup(LL_PIN, GPIO.IN)
 
         current_speed:int = 0
         position_error:float = 0.0
@@ -72,7 +76,12 @@ class governor():
             if not QueueSetpoint.empty():
                 position_setpoint, speed_setpoint = QueueSetpoint.get()
                 #print("driver", position_setpoint, speed_setpoint, current_position)
-            
+
+            position_error = position_setpoint - current_position     
+            if GPIO.input(LL_PIN) and position_error<0:
+                stop = True
+                current_position = 0
+
             if not stop:              
                 
                 # simple controller
@@ -99,13 +108,15 @@ class governor():
                     limited_speed = current_speed + speed_error
 
                 # print("driver", position_error, current_position, limited_speed, speed_error)
-                lower_limit_lock:bool = (current_position == self.x_min) and (limited_speed < 0)
-                upper_limit_lock:bool = (current_position == self.x_max) and (limited_speed > 0)
-                if lower_limit_lock:
-                    print("lower", current_speed, limited_speed)
-                    limited_speed = 0
-                    speed_setpoint = 0
-                    current_speed = limited_speed
+                lower_limit_lock = False
+                upper_limit_lock = False
+                # lower_limit_lock:bool = (current_position == self.x_min) and (limited_speed < 0)
+                # upper_limit_lock:bool = (current_position == self.x_max) and (limited_speed > 0)
+                # if lower_limit_lock:
+                #     print("lower", current_speed, limited_speed)
+                #     limited_speed = 0
+                #     speed_setpoint = 0
+                #     current_speed = limited_speed
                 if not lower_limit_lock or upper_limit_lock:
                     if limited_speed < 0:
                         # GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
@@ -269,56 +280,77 @@ class governor():
             if self.ResetState:
                 current_state = "reset"
             if not QueueCorrectionFromCV.empty():
-                delta_x, delta_v = QueueCorrectionFromCV.get()    
+                detection, delta_x, delta_v = QueueCorrectionFromCV.get()    
             match current_state:
                 case "reset":
-                    self.QueueSetPoint.put([1, 60])
+                    self.QueueSetPoint.put([1, 60 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm <=1:
                         current_state = "start"
                 case "start":
                     x = int(302/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 400])
+                    self.QueueSetPoint.put([x, 400 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm >10:
                         current_state = "synchronize speed"
                 case "synchronize speed":
                     x = int(342/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 400])
+                    self.QueueSetPoint.put([x, 400 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.HIGH)
-                    if self.current_position_in_mm > 50:                        
+                    if self.current_position_in_mm > 30:                        
                         current_state = "pickup shrimp"
                 case "pickup shrimp":
                     x = int(342/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 400])
+                    self.QueueSetPoint.put([x, 400 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
-                    if self.current_position_in_mm > 100:                       
-                        current_state = "analyze shrimp"
+                    if self.current_position_in_mm > 60:                       
+                        # current_state = "analyze shrimp"
+                        current_state = "move shrimp forward"
+                case "move shrimp forward":
+                    x = int(1500/self.mm_per_step)
+                    self.QueueSetPoint.put([x, 400 * self.speedFactor])
+                    if detection:
+                        current_state = "move shrimp to camera"
+                    if self.current_position_in_mm > 1490:
+                        current_state = "No shrimp"
+                    GPIO.output(SERVO_PIN, GPIO.LOW)
+                case "No shrimp":
+                    self.QueueStop.put(True)
+                    time.sleep(0.1)
+                case "move shrimp to camera":
+                    ...
                 case "analyze shrimp":
                     x = int(342/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 200 + delta_v])
+                    self.QueueSetPoint.put([x, (200 * self.speedFactor) + delta_v])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm > 250:                       
                         current_state = "belly cut"
                 case "belly cut":
                     x = int(342/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 200])
+                    self.QueueSetPoint.put([x, 200 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm > 300:                       
                         current_state = "drop off"
                 case "drop off":
                     x = int((342 + delta_x)/self.mm_per_step)
-                    self.QueueSetPoint.put([x, 300]) 
+                    self.QueueSetPoint.put([x, 300 * self.speedFactor]) 
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm > 340:                       
                         current_state = "return to start"
                 case "return to start":
-                    self.QueueSetPoint.put([1, 600])
+                    self.QueueSetPoint.put([1, 600 * self.speedFactor])
                     GPIO.output(SERVO_PIN, GPIO.LOW)
                     if self.current_position_in_mm <=1:
-                        current_state = "start"                     
+                        current_state = "continue"
+                case "continue":
+                    if self.continuesMode:
+                        current_state = "start"
+                    else:
+                        current_state = "continue"
+                        time.sleep(0.1)
                 case _:
                    current_state = "reset"
+            
             time.sleep(0.001)    
            
     
@@ -401,7 +433,7 @@ class governor():
                 QueueCurrentFrame.put(output_image)
 
             
-            QueueCorrectionFromCV.put([0.0, 0]) #[float position, int speed]
+            QueueCorrectionFromCV.put([False, 0.0, 0]) #[bool detection, float position, int speed]
             
        
     def convertCapturedImage(self, QueueShutdown, QueueCurrentFrame)->None:
@@ -485,8 +517,16 @@ class governor():
                 time.sleep(max(remaining_time/2, 0.0001))  # Sleep for the remaining time or minimum sleep interval
             else:
                 pass
+    
+    def setMode(self, mode:str)->None:
+        match mode:
+            case "continues":
+                self.continuesMode = True
+            case "single":
+                self.continuesMode = False
 
-
+    def setSpeed(self, speed: float)->None:
+        self.speedFactor = max(min(speed, 1), 0)
 
 def main()->None:   
     ctrl = governor()

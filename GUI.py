@@ -85,7 +85,20 @@ class GUI_TabFrame(customtkinter.CTkFrame):
 
         self.OnOff_label = customtkinter.CTkButton(self.control_frame, text="On", anchor="s", command=self.OnOff_callback)
         self.OnOff_label.grid(row=3, column=3, padx=20, pady=(10, 0))
-    
+
+        self.scaling_label = customtkinter.CTkLabel(self.control_frame, text="Speed", anchor="w")
+        self.scaling_label.grid(row=4, column=0, padx=20, pady=(10, 0))
+
+        self.speed = customtkinter.CTkOptionMenu(self.control_frame, values=["10%","50%","100%"],
+                                                               command=self.speed_event)
+        self.speed.grid(row=5, column=0, padx=20, pady=(10, 20))
+        self.speed.set("100%")
+
+        self.mode_label = customtkinter.CTkLabel(self.control_frame, text="Mode", anchor="w")
+        self.mode_label.grid(row=4, column=1, padx=20, pady=(10, 0))
+
+        self.continues = customtkinter.CTkCheckBox(self.control_frame, text="continues", command=self.mode_event)
+        self.continues.grid(row=5, column=1, padx=20, pady=(10, 0))
 
         self.state_frame = customtkinter.CTkFrame(self, width=200)
         self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
@@ -94,6 +107,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
 
         self.current_state_label = customtkinter.CTkLabel(self.state_frame,  text="current state")
         self.current_state_label.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        
 
         self.governor = conveyor_controller.governor()
         #self.governor = None
@@ -116,6 +130,11 @@ class GUI_TabFrame(customtkinter.CTkFrame):
                                         size=(320, 240))
                             self.preview_frame_image.configure(image = _image)
                 state = self.governor.state
+                if state == "No Shrimp":
+                    self.current_state_label.configure(fg_color="red")
+                else:
+                    self.current_state_label.configure(fg_color="transparent")
+                    
                 self.current_state_label.configure(text = state)
 
     def update(self):
@@ -123,6 +142,15 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.currentFrame_thread = Thread(target = self.getCurrentFrame)
         self.currentFrame_thread.start()
 
+    def speed_event(self, speed_value:str):
+        speed = float(speed_value.replace("%", "")) / 100
+        self.governor.setSpeed(speed)
+
+    def mode_event(self):
+        if self.continues.get==1:
+            self.governor.setMode("continues")
+        else:
+            self.governor.setMode("single")
 
     def start_callback(self):
         self.governor.start_controller()
