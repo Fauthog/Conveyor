@@ -86,19 +86,19 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.OnOff_label = customtkinter.CTkButton(self.control_frame, text="On", anchor="s", command=self.OnOff_callback)
         self.OnOff_label.grid(row=3, column=3, padx=20, pady=(10, 0))
 
-        self.scaling_label = customtkinter.CTkLabel(self.control_frame, text="Speed", anchor="w")
-        self.scaling_label.grid(row=4, column=0, padx=20, pady=(10, 0))
+        # self.scaling_label = customtkinter.CTkLabel(self.control_frame, text="Speed", anchor="w")
+        # self.scaling_label.grid(row=4, column=0, padx=20, pady=(10, 0))
 
-        self.speed = customtkinter.CTkOptionMenu(self.control_frame, values=["10%","50%","100%"],
-                                                               command=self.speed_event)
-        self.speed.grid(row=5, column=0, padx=20, pady=(10, 20))
-        self.speed.set("100%")
+        # self.speed = customtkinter.CTkOptionMenu(self.control_frame, values=["10%","50%","100%"],
+        #                                                        command=self.speed_event)
+        # self.speed.grid(row=5, column=0, padx=20, pady=(10, 20))
+        # self.speed.set("100%")
 
         self.mode_label = customtkinter.CTkLabel(self.control_frame, text="Mode", anchor="w")
-        self.mode_label.grid(row=4, column=1, padx=20, pady=(10, 0))
+        self.mode_label.grid(row=4, column=0, padx=20, pady=(10, 0))
 
-        self.continues = customtkinter.CTkCheckBox(self.control_frame, text="continues", command=self.mode_event)
-        self.continues.grid(row=5, column=1, padx=20, pady=(10, 0))
+        self.continues = customtkinter.CTkCheckBox(self.control_frame, text="continuous")
+        self.continues.grid(row=5, column=0, padx=20, pady=(10, 0))
 
         self.state_frame = customtkinter.CTkFrame(self, width=200)
         self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
@@ -121,7 +121,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
                 if self.StopThread:
                         return
                 time.sleep(0.1)
-                #print("state", self.governor.state)
+               
                 _i = self.governor.convertedImage
                 if _i != image:
                     image=_i
@@ -147,8 +147,8 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.governor.setSpeed(speed)
 
     def mode_event(self):
-        if self.continues.get==1:
-            self.governor.setMode("continues")
+        if self.continues.get()==1:
+            self.governor.setMode("continuous")
         else:
             self.governor.setMode("single")
 
@@ -168,15 +168,19 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         
     
     def reset_callback(self):
+        self.mode_event()
+        time.sleep(0.1)
         self.governor.reset()
 
     def OnOff_callback(self):
         if not self.On:
                 self.On=True
                 self.OnOff_label.configure(text = "Off")
-                self.start_label.configure(state="enabled")
-                self.stop_label.configure(state="enabled")
-                self.reset_label.configure(state="enabled")
+                self.start_label.configure(state="normal")
+                self.stop_label.configure(state="normal")
+                self.reset_label.configure(state="normal")
+                # self.continues.configure(state="diabled")
+
                 self.governor.OnOff("On")
                 self.update()          
                 
@@ -186,6 +190,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
                 self.start_label.configure(state="disabled")
                 self.stop_label.configure(state="disabled")
                 self.reset_label.configure(state="disabled")
+                # self.continues.configure(state="normal")
                 time.sleep(0.1)
                 self.governor.OnOff("Off")
                 self.StopThread = True
