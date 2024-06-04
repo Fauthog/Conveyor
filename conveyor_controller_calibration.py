@@ -76,6 +76,7 @@ class governor():
         GPIO.setup(self.LL_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
         while GPIO.input(self.LL_PIN)==1:
+                    print("0")
                     GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
                     delay:float = 0.5 * 60.0 / (self.steps_per_rev * 60)
                     GPIO.output(self.STEP_PIN, GPIO.HIGH)
@@ -96,7 +97,7 @@ class governor():
         GPIO.setup(self.STEP_PIN, GPIO.OUT)
         GPIO.setup(self.DIR_PIN, GPIO.OUT)
         GPIO.setup(self.LL_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
+        self.Position0()
         while True:
             self.current_position_in_mm = self.current_position_in_pulses * self.mm_per_step
             position_error = self.goto_position - self.current_position_in_mm
@@ -146,7 +147,7 @@ class governor():
 
 def main()->None:   
     ctrl = governor()
-    # ctrl.Position0()
+    #ctrl.Position0()
     
 
 if __name__ == "__main__":

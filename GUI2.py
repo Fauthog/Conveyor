@@ -91,31 +91,35 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.mode_label.grid(row=3, column=4, padx=20, pady=(10, 0))
 
         
-        self.state_frame = customtkinter.CTkFrame(self, width=200)
-        self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
-        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state", width=500)
+        self.state_frame = customtkinter.CTkFrame(self)
+        self.state_frame.grid(row=1, column=2, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state")
         self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
         self.states=["init", "limit", "start", "synchronize", "pickup","detection", "analyze", "cut", "drop off", "return"]
         self.labels_0=[]
         self.labels_1=[]
     
+        self.label_1 = customtkinter.CTkLabel(self.state_frame,  text="state 1")
+        self.label_1.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        
         self.label_0 = customtkinter.CTkLabel(self.state_frame,  text="state 0")
         self.label_0.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        
+        
         for i in range(len(self.states)):
             label = customtkinter.CTkLabel(self.state_frame,  text=self.states[i])
             label.grid(row=i+2, column=0, padx=20, pady=20, sticky="nsew")
             self.labels_0.append(label)
 
-        self.label_1 = customtkinter.CTkLabel(self.state_frame,  text="state 1")
-        self.label_1.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        
         for j in range(len(self.states)):
-            label = customtkinter.CTkLabel(self.state_frame,  text=self.states[i])
-            label.grid(row=i+2, column=1, padx=20, pady=20, sticky="nsew")
+            label = customtkinter.CTkLabel(self.state_frame,  text=self.states[j])
+            label.grid(row=j+2, column=1, padx=20, pady=20, sticky="nsew")
             self.labels_1.append(label)
 
         self.error_label = customtkinter.CTkLabel(self.state_frame)
-        self.label_1.grid(row=12, column=0, padx=20, pady=20, sticky="nsew")
+        self.error_label.grid(row=12, column=0, padx=20, pady=20, sticky="nsew")
         
 
         self.governor = conveyor_controller2.governor()
@@ -130,7 +134,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
                         return
                 time.sleep(0.1)
                
-                _i = self.governor.convertedImage
+                _i = self.governor.getCurrentFrame()
                 if _i != image:
                     image=_i
                     if image is not None:                
@@ -180,8 +184,8 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.StopThread = False
         self.currentFrame_thread = Thread(target = self.getCurrentFrame)
         self.currentFrame_thread.start()
-        self.currentState_thread = Thread(target = self.getCurrentState)
-        self.currentState_thread.start()
+        #self.currentState_thread = Thread(target = self.getCurrentState)
+        #self.currentState_thread.start()
     
     def start_callback(self):
         self.governor.userInput("start")

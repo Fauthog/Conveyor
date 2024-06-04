@@ -56,11 +56,11 @@ class driver():
 
         self.setupGPIO()
 
-        process = Process(target=self.driver0, args=(self.QueueShutdown, self.QueueHold0, self.QueueXD0, self.QueueCurrentPosition0, self.QueueInitPosition0,))      
+        process = Process(target=self.driver0, args=(self.QueueShutdown, self.QueueHold0, self.QueueXD0, self.QueueCurrentPosition0, self.QueueInitPosition0, self.QueueLL0))      
         self.process_list.append(process)    
 
-        # process = Process(target=self.driver1, args=(self.QueueShutdown, self.QueueHold1, self.QueueXD1, self.QueueCurrentPosition1, self.QueueInitPosition1,))      
-        # self.process_list.append(process)  
+        process = Process(target=self.driver1, args=(self.QueueShutdown, self.QueueHold1, self.QueueXD1, self.QueueCurrentPosition1, self.QueueInitPosition1, self.QueueLL1,))      
+        self.process_list.append(process)  
 
         process = Process(target=self.solenoidstate, args=(self.QueueShutdown, self.QueueSolenoidState,))      
         self.process_list.append(process)  
@@ -393,7 +393,7 @@ class driver():
     def driver1(self, QueueShutdown, QueueHold1, QueueXD1, QueueCurrentPosition1, QueueInitPosition1, QueueLL1)->None:
         print("driver0 process starting")
         
-        self.initPositionUL1()
+        self.initPosition1()
         currentPosition:int = 0
         currentSpeed: int = 0
         hold:bool = False
@@ -691,8 +691,10 @@ class statemachine():
         self.resume:bool = False
         self.shutDown:bool = False
         self.hold:bool = True
+        self.process_list = []
+        self.error_state:str = ""
 
-        self.QueueCorrectionFromCV = self.camera.QueueCorrectionFromCV
+        
 
         process = Thread(target=self.statemachine)
         self.process_list.append(process)
@@ -712,7 +714,7 @@ class statemachine():
             self.state1Last = self.state1[:]
 
     def getStates(self)->[]:
-        return [self.state0, self.state1] 
+        return [self.state0, self.state1, self.error_state] 
 
     def setCycling(self, cycling:bool)->None:
         self.cycling = cycling
@@ -973,6 +975,7 @@ class camera():
         self.QueueCorrectionFromCV = Queue()
         self.xD:float = 0.0
         self.detection = []
+        self.convertedImage = None
         
 
         process = Process(target=self.camera, args=(self.QueueShutdown, self.QueueCurrentFrame, self.QueueCorrectionFromCV, self.QueueDetection, self.QueueDetectionMode,))      
@@ -1054,7 +1057,7 @@ class camera():
 
         picam2.start()
         shrimp = find_shrimp_features()
-        shrimp.set_ear_template('/home/admin/Conveyor/template1.jpg',low_scale_factor=0.9, high_scale_factor=1.1, scale_step=3)
+        shrimp.set_ear_template('/home/pi/Conveyor/template1.jpg',low_scale_factor=0.9, high_scale_factor=1.1, scale_step=3)
         nose_dark_threshold = 100  # Settable dark value threshold
         nose_area_threshold = 100  # Minimum area of the detected object to be considered valid
         intercept:float = -2923.5706
@@ -1154,20 +1157,24 @@ class governor():
         self.shutdown:bool = False
         self.state_0:str = ""
         self.state_1:str = ""
+        self.process_list=[]
         self.startup()
+        self.currentFrame=None
+        self.error:str=""
 
    
     def collectUpdates(self)->None:
         while True:
             if self.shutdown:
                 return
-            self.state_0, self.state_1 = self.statemachine.getStates()
-            self.camera.getCurrentFrame()
+            self.state_0, self.state_1, error = self.statemachine.getStates()
+            
+            self.currentFrame = self.camera.getCurrentFrame()
             time.sleep(0.05)
             
     
     def getCurrentState(self):
-        return [self.state_0, self.state_1]
+        return [self.state_0, self.state_1, self.error]
     
     def getCurrentFrame(self):
         return self.currentFrame
