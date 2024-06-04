@@ -50,8 +50,8 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         super().__init__(master)
 
         self.StopThread:bool = False
-        self.currentFrame_thread = None
-        self.StartState:bool = False
+        self.currentFrame_thread = None        
+        self.Pause:bool = False
         self.On:bool = False
         self.Mode:str = "single"
        
@@ -78,14 +78,17 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.start_label = customtkinter.CTkButton(self.control_frame, text="Start", anchor="s", command=self.start_callback)
         self.start_label.grid(row=3, column=0, padx=20, pady=(10, 0))
 
+        self.pauseResume_label = customtkinter.CTkButton(self.control_frame, text="Pause", anchor="s", command=self.pauseResume_callback)
+        self.pauseResume_label.grid(row=3, column=1, padx=20, pady=(10, 0))
+
         self.reset_label = customtkinter.CTkButton(self.control_frame, text="Reset", anchor="s", command=self.reset_callback)
-        self.reset_label.grid(row=3, column=1, padx=20, pady=(10, 0))
+        self.reset_label.grid(row=3, column=2, padx=20, pady=(10, 0))
         
         self.mode_btn = customtkinter.CTkButton(self.control_frame, text="Mode", anchor="w", command=self.mode_callback)
-        self.mode_btn.grid(row=3, column=2, padx=20, pady=(10, 0))
+        self.mode_btn.grid(row=3, column=3, padx=20, pady=(10, 0))
 
         self.mode_label = customtkinter.CTkLabel(self.control_frame, text=self.Mode)
-        self.mode_label.grid(row=3, column=3, padx=20, pady=(10, 0))
+        self.mode_label.grid(row=3, column=4, padx=20, pady=(10, 0))
 
         
         self.state_frame = customtkinter.CTkFrame(self, width=200)
@@ -93,9 +96,9 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state", width=500)
         self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.states=["init", "start", "synchronize", "pickup","detection", "analyze", "cut", "drop off", "return"]
+        self.states=["init", "limit", "start", "synchronize", "pickup","detection", "analyze", "cut", "drop off", "return"]
         self.labels_0=[]
-        # self.labels_1=[]
+        self.labels_1=[]
     
         self.label_0 = customtkinter.CTkLabel(self.state_frame,  text="state 0")
         self.label_0.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
@@ -104,12 +107,12 @@ class GUI_TabFrame(customtkinter.CTkFrame):
             label.grid(row=i+2, column=0, padx=20, pady=20, sticky="nsew")
             self.labels_0.append(label)
 
-        # self.label_1 = customtkinter.CTkLabel(self.state_frame,  text="state 1")
-        # self.label_1.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
-        # for j in range(len(self.states)):
-        #     label = customtkinter.CTkLabel(self.state_frame,  text=self.states[i])
-        #     label.grid(row=i+2, column=1, padx=20, pady=20, sticky="nsew")
-        #     self.labels_1.append(label)
+        self.label_1 = customtkinter.CTkLabel(self.state_frame,  text="state 1")
+        self.label_1.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        for j in range(len(self.states)):
+            label = customtkinter.CTkLabel(self.state_frame,  text=self.states[i])
+            label.grid(row=i+2, column=1, padx=20, pady=20, sticky="nsew")
+            self.labels_1.append(label)
 
         self.error_label = customtkinter.CTkLabel(self.state_frame)
         self.label_1.grid(row=12, column=0, padx=20, pady=20, sticky="nsew")
@@ -179,10 +182,12 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.currentFrame_thread.start()
         self.currentState_thread = Thread(target = self.getCurrentState)
         self.currentState_thread.start()
-  
-
+    
     def start_callback(self):
-        if self.StartState:
+        self.governor.userInput("start")
+
+    def pauseResume_callback(self):
+        if self.Pause:
             self.governor.userInput("hold")
             self.start_label.configure(text="resume")
             self.StartState = False
