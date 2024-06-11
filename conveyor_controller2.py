@@ -32,7 +32,7 @@ class driver():
         self.QueueCurrentPosition1 = Queue()
         self.QueueXD1 = Queue()
         self.QueueInitPosition1 = Queue()        
-        self.currentPositionInPulse1:int = 0
+        self.currentPositionInPulse1:int = 1473
         self.currentPositionInMillimeter1:float = 0.0
         self.servo1state_1:str = ""
         self.servo2state_1:str = ""
@@ -132,6 +132,7 @@ class driver():
                 self.currentPositionInMillimeter0 = position0 * self.mm_per_step
 
             if not QueueCurrentPosition1.empty():
+                # print("Queue1")
                 position1 = QueueCurrentPosition1.get()
                 while not QueueCurrentPosition1.empty():
                     try:
@@ -154,13 +155,20 @@ class driver():
         self.DIR_PIN = 27
         self.LL_PIN = 6
         self.Solenoid_PIN = 22
+        self.SERVO1_PIN1 = 17
+        self.SERVO1_PIN2 = 4
+        self.SERVO2_PIN = 14
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.STEP_PIN, GPIO.OUT)
         GPIO.setup(self.DIR_PIN, GPIO.OUT)
         GPIO.setup(self.LL_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.Solenoid_PIN, GPIO.OUT)
+        GPIO.setup(self.SERVO1_PIN1, GPIO.OUT)
+        GPIO.setup(self.SERVO1_PIN2, GPIO.OUT)
+        GPIO.setup(self.SERVO2_PIN, GPIO.OUT)
 
     def isInitPosition(self)->bool:
+        # print("is Init", GPIO.input(self.LL_PIN), self.currentPositionInPulse0,  self.currentPositionInPulse1)
         return GPIO.input(self.LL_PIN)==0 and self.currentPositionInPulse0 == 0 and self.currentPositionInPulse1 == 1473
     
     def initPosition0(self)->None:
@@ -175,6 +183,7 @@ class driver():
         self.currentPositionInMillimeter0 = 0.0     
 
     def initPosition1(self)->None:      
+        # print("init1")
         self.currentPositionInPulse1 = 1473
         self.currentPositionInMillimeter1 = 350   
 
@@ -236,10 +245,11 @@ class driver():
         limitedSpeed:float = 0.0
         PxD:float = 1.0
         PxDD:float = 1.0
-        IxDD:float = 0.3
+        IxDD:float = 0.0
         lastIxDD:float = 0.0
         maxSpeedDelta0:int = 25
         maxSpeedDelta:int = 100
+        int_time=None
 
         while True:
             start_time = time.perf_counter()
@@ -256,6 +266,10 @@ class driver():
                         currentPosition = 0
                         currentSpeed = 0
                         lastIxDD = 0
+                        xD=0
+                        xDD = 0
+                        positionSetpoint = 0
+                        speedSetpoint = 0
                 except:
                     ...
             while not QueueLL0.empty(): # empty the Queue
@@ -280,31 +294,29 @@ class driver():
                 positionSetpoint, speedSetpoint, speedLimit, externalXD = QueueXD0.get()
                 while (not QueueXD0.empty()): # empty the Queue
                     try:
-                        positionSetpoint, speedSetpoint, speedLimit = QueueXD0.get()
+                        positionSetpoint, speedSetpoint, speedLimit, externalXD = QueueXD0.get()
                     except:
                         ...
 
             if externalXD:
                 xD = positionSetpoint
-                if xD < 0:
-                    xDD = -speedSetpoint
-                else:
-                    xDD = speedSetpoint                
+                xDD = speedSetpoint                
             else:
                 xD = positionSetpoint - currentPosition
-                if xD < 0:
-                    xDD = -speedSetpoint - currentSpeed
-                else:
-                    xDD = speedSetpoint - currentSpeed
+                xDD = speedSetpoint - currentSpeed
                
-
+            
             if not hold:
 
                 # controller               
-                IxDD = IxDD + lastIxDD
-                requestedSpeed = xD * PxD + xDD * (PxDD + IxDD)
-                lastIxDD = xDD * IxDD
-
+                I = (xDD * IxDD) + lastIxDD
+                lastIxDD = I
+                # lastIxDD = (xDD * IxDD + lastIxDD)* (int_time - time.perf_counter)
+                requestedSpeed = xD * PxD + I 
+                
+                
+         
+               
                 # rate limiter
                 speedDelta = requestedSpeed - currentSpeed
 
@@ -394,7 +406,7 @@ class driver():
         print("driver0 process starting")
         
         self.initPosition1()
-        currentPosition:int = 0
+        currentPosition:int = 1473
         currentSpeed: int = 0
         hold:bool = False
         
@@ -427,6 +439,10 @@ class driver():
                         currentPosition = 0
                         currentSpeed = 0
                         lastIxDD = 0
+                        xD=0
+                        xDD = 0
+                        positionSetpoint = 0
+                        speedSetpoint = 0
                 except:
                     ...
 
@@ -452,7 +468,7 @@ class driver():
                 positionSetpoint, speedSetpoint, speedLimit, externalXD = QueueXD1.get()
                 while (not QueueXD1.empty()): # empty the Queue
                     try:
-                        positionSetpoint, speedSetpoint, speedLimit = QueueXD1.get()
+                        positionSetpoint, speedSetpoint, speedLimit, externalXD = QueueXD1.get()
                     except:
                         ...
 
@@ -472,11 +488,17 @@ class driver():
 
             if not hold:
 
-                # controller               
-                IxDD = IxDD + lastIxDD
-                requestedSpeed = xD * PxD + xDD * (PxDD + IxDD)
-                lastIxDD = xDD * IxDD
+                # controller       
 
+                I = (xDD * IxDD) + lastIxDD
+                lastIxDD = I
+                # lastIxDD = (xDD * IxDD + lastIxDD)* (int_time - time.perf_counter)
+                requestedSpeed = xD * PxD + I 
+                    
+                # IxDD = IxDD + lastIxDD
+                # requestedSpeed = xD * PxD + xDD * (PxDD + IxDD)
+                # lastIxDD = xDD * IxDD
+# 
                 # rate limiter
                 speedDelta = requestedSpeed - currentSpeed
 
@@ -494,11 +516,11 @@ class driver():
                 limitedSpeed = min(max(limitedSpeed, -speedLimit), speedLimit)
 
                 if limitedSpeed < 0: 
-                        GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
+                        # GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
                         delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limitedSpeed))
                         call_time_delta = time.perf_counter() - start_time
                         delta_delay = delay - call_time_delta
-                        GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        # GPIO.output(self.STEP_PIN, GPIO.LOW)
                        
                         if 0 <= delta_delay <0.03:
                             time.sleep(delta_delay)
@@ -506,28 +528,28 @@ class driver():
                             time.sleep(delay)
                         
                         currentPosition -= 1
-                        GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                        # GPIO.output(self.STEP_PIN, GPIO.HIGH)
                      
                         time.sleep(delay)
-                        GPIO.output(self.STEP_PIN, GPIO.LOW)
+                        # GPIO.output(self.STEP_PIN, GPIO.LOW)
 
                 elif limitedSpeed > 0:
-                    GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
+                    # GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
                     delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limitedSpeed))
                     call_time_delta = time.perf_counter() - start_time
                     delta_delay = delay - call_time_delta
                     
-                    GPIO.output(self.STEP_PIN, GPIO.LOW)
+                    # GPIO.output(self.STEP_PIN, GPIO.LOW)
                     
                     if 0 <= delta_delay <0.03:
                         time.sleep(delta_delay)
                     else:
                         time.sleep(delay)
                     currentPosition += 1
-                    GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                    # GPIO.output(self.STEP_PIN, GPIO.HIGH)
                     
                     time.sleep(delay)
-                    GPIO.output(self.STEP_PIN, GPIO.LOW)
+                    # GPIO.output(self.STEP_PIN, GPIO.LOW)
                 
                 currentSpeed = limitedSpeed
 
@@ -535,24 +557,24 @@ class driver():
                  # ramp down to stop
                 if currentSpeed > 1:  # case forward
                     limitedSpeed = max(currentSpeed-60, 1) 
-                    GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
+                    # GPIO.output(self.DIR_PIN, GPIO.LOW) # forward
                     delay:float = 0.5 * 60.0 / (self.steps_per_rev * limitedSpeed)
-                    GPIO.output(self.STEP_PIN, GPIO.HIGH)                   
+                    # GPIO.output(self.STEP_PIN, GPIO.HIGH)                   
                     time.sleep(delay)
                     currentPosition +=1
-                    GPIO.output(self.STEP_PIN, GPIO.LOW)
+                    # GPIO.output(self.STEP_PIN, GPIO.LOW)
                     
                     time.sleep(delay)
                     currentSpeed = limitedSpeed
 
                 elif currentSpeed < -1: # case reverse
                     limitedSpeed = min(currentSpeed+60, -1)
-                    GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
+                    # GPIO.output(self.DIR_PIN, GPIO.HIGH) # reverse
                     delay:float = 0.5 * 60.0 / (self.steps_per_rev * abs(limitedSpeed))
-                    GPIO.output(self.STEP_PIN, GPIO.HIGH)                    
+                    # GPIO.output(self.STEP_PIN, GPIO.HIGH)                    
                     time.sleep(delay)
                     currentPosition -= 1
-                    GPIO.output(self.STEP_PIN, GPIO.LOW)                    
+                    # GPIO.output(self.STEP_PIN, GPIO.LOW)                    
                     time.sleep(delay)
                     currentSpeed = limitedSpeed
                 else:
@@ -629,34 +651,7 @@ class driver():
                 # GPIO.output(self.SERVO2_PIN, GPIO.LOW)
                 
 
-        print("start solenoidstate")
-        self.Solenoid_PIN = 22
-        GPIO.setmode(GPIO.BCM)   
-        GPIO.setup(self.Solenoid_PIN, GPIO.OUT)
-        state = "close"
-        shutdown = False
-        while True:
-            if not QueueShutdown.empty():
-                    shutdown = QueueShutdown.get()
-            if shutdown:  
-                print("shutdown driver")              
-                return
-            if not QueueSolenoidState.empty():
-                state = QueueSolenoidState.get()
-                match state:
-                    case "open":
-                        GPIO.output(self.Solenoid_PIN, GPIO.HIGH)
-                    case "close":
-                        GPIO.output(self.Solenoid_PIN, GPIO.LOW)
-                    case "pulse":
-                        GPIO.output(self.Solenoid_PIN, GPIO.HIGH)
-                        time.sleep(0.1)
-                        GPIO.output(self.Solenoid_PIN, GPIO.LOW)
-                        state = "close"
-                    case _:
-                        GPIO.output(self.Solenoid_PIN, GPIO.LOW)
-            else:
-                time.sleep(0.01)
+      
 
     def pulseSolenoid(self)->None:
             self.QueueSolenoidState.put(True)
@@ -679,7 +674,8 @@ class driver():
                 time.sleep(0.01)
 
 class statemachine():
-    def __init__(self, driver, camera): 
+    def __init__(self, driver, camera):
+        print("init state machine") 
         self.driver = driver
         self.camera = camera
         self.state0:str = "init"
@@ -690,7 +686,7 @@ class statemachine():
         self.cycling:bool = False
         self.resume:bool = False
         self.shutDown:bool = False
-        self.hold:bool = True
+        self.hold:bool = False
         self.process_list = []
         self.error_state:str = ""
 
@@ -721,15 +717,17 @@ class statemachine():
 
     def stop(self, hold:bool):
         self.hold=hold
-        self.driver.hold()
+        self.driver.hold(hold)
 
     def start(self):
+        # print("state machine start")
         self.Start = True
 
     def reset(self)->None:
         self.state0 = "init"
         self.state1 = "init"
         self.error_state = ""
+        self.Start = False
  
     def statemachine(self):
        
@@ -738,7 +736,9 @@ class statemachine():
             if self.shutDown:
                 print("shutting down statemachine")
                 return
-            self.printState()
+            # print("state", self.state0, self.hold, self.Start)
+            # print("isInit", self.driver.isInitPosition() )
+            # self.printState()
             if not self.hold:
                 match self.state0:                
                     case "init":
@@ -752,7 +752,7 @@ class statemachine():
 
                     case "limit":
                         self.driver.touchLL0()
-                        self.sleep(0.1)
+                        time.sleep(0.1)
                         if self.driver.getCurrentPosition0() == 0:
                             if self.cycling:
                                 self.Start = True
@@ -762,24 +762,22 @@ class statemachine():
                     
                     case "wait":
                         if self.Start:
-                            self.state0 = "start"
-                        else:
-                            time.sleep(0.1)
+                            self.state0 = "start"                        
 
                     case "start":
                         self.driver.servo1state0("0")
                         self.driver.servo2state0("open")
-                        self.camera.setDetectionMode("Off")
-                        if self.Start and self.state1 == "cut":
+                        self.camera.setDetectionMode("Off")                      
+
+                        if self.Start and self.state1 == "drop off":
                             self.state0 = "synchronize"
-                        else:
-                            time.sleep(0.1)
+                        
 
                     case "synchronize":
                         self.driver.servo1state0("0")
                         self.driver.servo2state0("close")
                         self.camera.setDetectionMode("Off")
-                        self.driver.goto0(0,400, 410, False)
+                        self.driver.goto0(200,400, 400, False)
                         if self.driver.getCurrentPosition0() > 30:
                             self.driver.pulseSolenoid()                    
                             self.state0 = "pickup"
@@ -788,39 +786,62 @@ class statemachine():
                         self.driver.servo1state0("1")
                         self.driver.servo2state0("close")
                         self.camera.setDetectionMode("Off")
-                        self.driver.goto0(300, 400, 400, False)
+                        self.driver.goto0(200, 400, 400, False)
                         if self.driver.getCurrentPosition0() > 150:
                             self.state0 = "detection"
 
                     case "detection":
-                        self.driver.servo1state0("1")
-                        self.driver.servo2state0("close")
-                        self.camera.setDetectionMode("Ear")
-                        self.driver.goto0(301, 400, 400, False)
-                        if self.camera.getDetectionFromCV()[0]:
-                            self.state0 = "analyze"
-                        if self.driver.getCurrentPosition0() > 300:
-                            self.state0 = "IR fail"
-                        if self.camera.getDetectionFromCV()[1]:
-                            self.state0 = "IR fail"
-                    
-                    case "analyze":
+
                         self.driver.servo1state0("1")
                         self.driver.servo2state0("close")
                         self.camera.setDetectionMode("Nose")
-                        if self.getDetectionfromCV()[0]:
+                        self.driver.goto0(200, 0, 25, False)
+                        _detectionFromCV = self.camera.getDetectionFromCV()
+                        _CurrentPosition = self.driver.getCurrentPosition0()
+                        if _detectionFromCV[0] and _CurrentPosition>180:                            
+                            xD=100
+                            self.state0 = "analyze"
+                        
+                        if _CurrentPosition>198 and not _detectionFromCV[0]:
+                            self.hold = True
+                            self.error_state = "no shrimp"
+
+
+                    # case "no shrimp":
+                    #     self.hold = True
+                    
+                    case "analyze":
+                        
+                      
+                        self.driver.servo1state0("1")
+                        self.driver.servo2state0("close")
+                        self.camera.setDetectionMode("Ear")
+                        if self.driver.getCurrentPosition0()>216:
+                                xD=min(xD, -0.21)
+                        if self.camera.getDetectionFromCV()[1]:
                             xD = self.camera.getCorrectionFromCV()
-                            self.driver.goto0(xD, 0, 100, True)
-                            print("xD", xD)
-                            if xD<0.5:
+                            self.driver.goto0(xD, 0, 5, True)
+                            # print(self.driver.getCurrentPosition0())
+                            # print("Pos", self.driver.getCurrentPosition0(), "xd", xD)
+                            
+                            if -0.1<=xD<=0.15:
+                                print("Pos", self.driver.getCurrentPosition0(), xD)
+                                self.driver.goto0(0, 0, 0, True)
+                                self.camera.setDetectionMode("Off")
                                 self.state0 = "cut"
+                                xD=100
+                        else:
+                            if self.driver.getCurrentPosition0()<215:
+                                # print("else")
+                                self.driver.goto0(10, 0, 7, True)
 
                     case "IR fail":
                         self.driver.hold()
-                        print("IRFail", self.camera.getDetectionFromCV()[2])
+                        
                         self.error_state = self.camera.getDetectionFromCV()[2]
 
                     case "cut":
+                        
                         self.driver.servo1state0("2")
                         self.driver.servo2state0("close")
                         self.camera.setDetectionMode("Off")
@@ -831,15 +852,15 @@ class statemachine():
                         self.driver.servo1state0("0")
                         time.sleep(1)
                         self.driver.servo2state0("open")
-                        self.cameras.setDetectionMode("Off")
+                        self.camera.setDetectionMode("Off")
                         time.sleep(1)
-                        if self.state1 == "cut":
+                        if self.driver.getCurrentPosition1()>150:
                             self.state0 = "return"
 
                     case "return":
                         self.driver.servo1state0("0")
                         self.driver.servo2state0("open")                   
-                        self.cameras.setDetectionMode("Off")
+                        self.camera.setDetectionMode("Off")
                         self.driver.goto0(0, 600, 600, False)
                         if self.driver.getCurrentPosition0() < 1:
                             self.state0 = "limit"
@@ -847,9 +868,7 @@ class statemachine():
                     case _:
                         ...
 
-                
-                
-                
+
                 match self.state1:                
                     case "init":
                         self.error_state = ""
@@ -858,112 +877,128 @@ class statemachine():
                         self.driver.servo2state1("open")
                         # self.camera.setDetectionMode("Off")
                         if self.driver.isInitPosition():                       
-                            self.state1 = "wait"
+                            self.state1 = "drop off"
 
                     case "limit":
                         self.driver.touchLL1()
-                        self.sleep(0.1)
-                        if self.driver.getCurrentPosition1() == 0:
-                            if self.cycling:
-                                self.Start = True
-                            else:
-                                self.Start = False
-                            self.state1 = "start"
+                        time.sleep(0.1)
+                        # if self.driver.getCurrentPosition1() == 0:
+                            # if self.cycling:
+                            #     self.Start = True
+                            # else:
+                            #     self.Start = False
+                        self.state1 = "wait"
                     
                     case "wait":
-                        if self.Start:
-                            self.state1 = "return"
-                        else:
-                            time.sleep(0.1)
+                       
+                            
+                        self.state1 = "start"
+                            
+                       
 
                     case "start":
                         self.driver.servo1state1("0")
                         self.driver.servo2state1("open")
                         # self.camera.setDetectionMode("Off")
-                        if self.Start and self.state0 == "cut":
+                        # if self.Start and self.driver.getCurrentPosition1() > 150:
+
+                        if self.Start and self.state0 == "drop off":
                             self.state1 = "synchronize"
-                        else:
-                            time.sleep(0.1)
+                        
 
                     case "synchronize":
                         self.driver.servo1state1("0")
                         self.driver.servo2state1("close")
                         # self.camera.setDetectionMode("Off")
-                        self.driver.goto1(0,400, 410, False)
+                        self.driver.goto1(190,400, 400, False)
                         if self.driver.getCurrentPosition1() > 30:
-                            self.driver.pulseSolenoid()                    
+                        #     # self.driver.pulseSolenoid()                    
                             self.state1 = "pickup"
                     
                     case "pickup":
                         self.driver.servo1state1("1")
                         self.driver.servo2state1("close")
                         # self.camera.setDetectionMode("Off")
-                        self.driver.goto1(300, 400, 400, False)
+                        self.driver.goto1(190, 400, 400, False)
                         if self.driver.getCurrentPosition1() > 150:
                             self.state1 = "detection"
 
                     case "detection":
                         self.driver.servo1state1("1")
                         self.driver.servo2state1("close")
-                        # self.camera.setDetectionMode("Ear")
-                        self.driver.goto1(301, 400, 400, False)
-                        # if self.camera.getDetectionFromCV()[0]:
-                        #     self.state1 = "analyze"
-                        # if self.driver.getCurrentPosition0() > 300:
-                        #     self.state1 = "IR fail"
-                        # if self.camera.getDetectionFromCV()[1]:
-                        #     self.state1 = "IR fail"
+                        # self.camera.setDetectionMode("Nose")
+                        self.driver.goto1(190, 400, 25, False)
+                        time.sleep(0.1)
+                        # if self.camera.getDetectionFromCV()[0] and self.driver.getCurrentPosition0()>180:                            
+                       
                         self.state1 = "analyze"
+                      
                     
                     case "analyze":
+                        
+                      
                         self.driver.servo1state1("1")
                         self.driver.servo2state1("close")
-                        # self.camera.setDetectionMode("Nose")
-                        # if self.getDetectionfromCV()[0]:
+                        # self.camera.setDetectionMode("Ear")
+                        time.sleep(0.1)
+                        # if self.camera.getDetectionFromCV()[1]:
                         #     xD = self.camera.getCorrectionFromCV()
-                        #     self.driver.goto1(xD, 0, 100, True)
-                        #     print("xD", xD)
-                        #     if xD<0.5:
-                        #         self.state1 = "cut"
+                        #     self.driver.goto0(xD, 0, 5, True)
+                           
+                        #     if abs(xD)<0.1:
+                        #         print("Pos", self.driver.getCurrentPosition0(), xD)
+                        #         self.driver.goto0(0, 0, 0, True)
+                        #         self.camera.setDetectionMode("Off")
                         self.state1 = "cut"
+
 
                     case "IR fail":
                         self.driver.hold()
-                        print("IRFail", self.camera.getDetectionFromCV()[2])
-                        self.error_state = self.camera.getDetectionFromCV()[2]
+                        
+                        # self.error_state = self.camera.getDetectionFromCV()[2]
 
                     case "cut":
                         self.driver.servo1state1("2")
                         self.driver.servo2state1("close")
                         # self.camera.setDetectionMode("Off")
-                        time.sleep(1)
+                        time.sleep(0.1)
                         self.state1 = "drop off"
 
                     case "drop off":
                         self.driver.servo1state1("0")
-                        time.sleep(1)
+                        time.sleep(0.1)
                         self.driver.servo2state1("open")
-                        self.cameras.setDetectionMode("Off")
-                        time.sleep(1)
-                        if self.state0 == "cut":
+                        # self.camera.setDetectionMode("Off")
+                        time.sleep(0.1)
+                        #  if self.cycling:
+                        #         self.Start = True
+                        #     else:
+                        #         self.Start = False
+                        if self.driver.getCurrentPosition0()>150:
                             self.state1 = "return"
+                        else:
+                            time.sleep(0.01)
 
                     case "return":
                         self.driver.servo1state1("0")
                         self.driver.servo2state1("open")                   
-                        # self.cameras.setDetectionMode("Off")
+                        # self.camera.setDetectionMode("Off")
                         self.driver.goto1(0, 600, 600, False)
                         if self.driver.getCurrentPosition1() < 1:
                             self.state1 = "limit"
                     
                     case _:
                         ...
+
+                
+                
+                
+               
             else:
                 time.sleep(0.1)            
 
             
             time.sleep(0.008)
-    
 
 class camera():
     def __init__(self):
@@ -973,7 +1008,7 @@ class camera():
         self.QueueDetection = Queue()
         self.QueueDetectionMode = Queue()
         self.QueueCorrectionFromCV = Queue()
-        self.xD:float = 0.0
+        self.xD:float = 100
         self.detection = []
         self.convertedImage = None
         
@@ -1016,10 +1051,11 @@ class camera():
                 print("shutdown convert image")              
                 return
             if not QueueCorrectionFromCV.empty():
-                xd = float(QueueCorrectionFromCV.get())
+                xD = QueueCorrectionFromCV.get()
                 while not QueueCorrectionFromCV.empty():
-                    xd = float(QueueCorrectionFromCV.get())
+                    xD = QueueCorrectionFromCV.get()
                 self.xD = xD
+                # print("self.xD", self.xD)
             else:
                 time.sleep(0.01)
 
@@ -1057,7 +1093,16 @@ class camera():
 
         picam2.start()
         shrimp = find_shrimp_features()
-        shrimp.set_ear_template('/home/pi/Conveyor/template1.jpg',low_scale_factor=0.9, high_scale_factor=1.1, scale_step=3)
+        shrimp.generate_scaled_and_rotated_templates(
+        '/home/admin/Conveyor/template1s.jpg', 
+        low_scale_factor=0.75, 
+        high_scale_factor=1.25, 
+        scale_step=10,
+        scale_divider=3,
+        rotation_range=10,
+        rotation_steps=2
+    )
+        
         nose_dark_threshold = 100  # Settable dark value threshold
         nose_area_threshold = 100  # Minimum area of the detected object to be considered valid
         intercept:float = -2923.5706
@@ -1092,29 +1137,45 @@ class camera():
                     found_nose, topleft, lowerright = shrimp.find_nose(frame, nose_roi, nose_dark_threshold, nose_area_threshold)
 
                     QueueDetection.put([found_nose, False, "Nose"])
-
+                    # print("Nose", found_nose)
                     if found_nose:   
                         cv2.rectangle(frame, topleft, lowerright, (0, 0, 255), 1)                          
-
+                    # ear = False
+                    # positive = 0
+                    # negative = 0
+                    # first_detection = time.perf_counter()
                 case "Ear":
-                    ear_roi = (0, int(0.3 * height), int(0.7 * width), int(0.7 * height))
-                    found_ear, topleft, lowerright = shrimp.find_ear(frame, ear_roi, match_threshold=0.8)  
+                    ear_roi = (int(0.2 * width), int(0.3 * height), int(0.85 * width), int(0.7 * height))
+                    found_ear, topleft, lowerright = shrimp.find_ear_mt(frame, ear_roi, match_threshold=0.70, scale_divider=3)
+                    # if found_ear and ear==False:
+                    #     ear = True
+                        # first_detection = time.perf_counter()
+                    # if ear:
+                    # if found_ear:
+                    #     positive +=1
+                    # else:
+                    #     negative +=1
 
-                    QueueDetection.put([found_ear, False, "Ear"])
-
+                    QueueDetection.put([False, found_ear, "Ear"])
+                    # print("ear", found_ear)
                     if found_ear:    
                         cv2.rectangle(frame, topleft, lowerright, (0, 255, 0), 1)
-                        blade_mm=(480-intercept)/slope
-                        distance_mm=(lowerright[0]-intercept)/slope
-                        difference = blade_mm - distance_mm - 5.145741756037534
-                       
+                        # blade_mm=(500-intercept)/slope
+                        # distance_mm=(lowerright[0]-intercept)/slope
+                        # difference = blade_mm - distance_mm - 5.145741756037534
+                        difference = (500-lowerright[0])*0.1
+                        # print("difference", difference)
+                        # if abs(difference) < 0.1:
+                        #     delta = time.perf_counter() - first_detection 
+                        #     dps = (positive + negative)/delta
+                        #     print("performance:", "T:", positive, "F:", negative, "DPS", dps )
                         QueueCorrectionFromCV.put(difference)
                 
                 case _:
                     QueueDetection.put([False, False, ""])
                      
            
-            cv2.line(frame, [400,0], [400,480], (255, 0, 0), 2)
+            cv2.line(frame, [500,0], [500,480], (255, 0, 0), 2)
             framecounter += 1
             if framecounter == 20:
                 framecounter = 0
@@ -1139,7 +1200,7 @@ class camera():
                     except:
                         ...
                 opencv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                cv2.imwrite("test.jpg", opencv_image)
+                # cv2.imwrite("test.jpg", opencv_image)
                 self.convertedImage = Image.fromarray(opencv_image)
             else:
                 time.sleep(0.005)  
@@ -1188,6 +1249,7 @@ class governor():
 
    
     def userInput(self, userInputString:str)->None:
+        # print("user input", userInputString)
         match userInputString:
             case "start":
                 self.statemachine.start()
