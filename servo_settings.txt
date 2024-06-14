@@ -1,0 +1,6 @@
+small servo
+500	850	1150	800
+
+big servo
+close: 2450 (~27.7)
+open: 970 (~175.7)
