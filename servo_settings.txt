@@ -1,5 +1,6 @@
 small servo
-500	850	1150	800
+neutral position 1250
+700	850	1550	800
 
 big servo
 close: 2450 (~27.7)
