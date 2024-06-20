@@ -3,6 +3,8 @@ from pymodbus.client import ModbusSerialClient
 from pymodbus.transaction import ModbusRtuFramer
 import time
 
+
+
 def calculate_crc(data):
     """Calculate CRC-16 Modbus for the given data."""
     crc = 0xFFFF
@@ -158,6 +160,8 @@ def main():
         # Immediate value speed = 500.00 r/min
         # Query: 01 10 5100 0006 0C 00000000 0007A120 0000C350 D9EC (21 bytes)
         # Response: 01 10 5100 0006 50F7 (8 bytes)
+     
+        
         request_packet = bytearray([0x01, # Slave address
                                     0x10, # Write operation
                                     0x51, 0x01, # Address (Immediate value status)
@@ -165,7 +169,7 @@ def main():
                                     0x08, # NUmber of data bytes (C=12) 
                                     # 0x00, 0x00, 0x00, 0x00, # ?
                                     # 0x00, 0x00, 0xC3, 0x50, # 50000 units
-                                    0x00, 0x07, 0xA1, 0x20, # 500000 units
+                                    0x00, 0x01, 0x86, 0xA0, # 500000 units
                                     0x00, 0x03, 0x0D, 0x40]) # 500.00 RPM
         # Calculate the CRC for the packet
         crc = calculate_crc(request_packet)
