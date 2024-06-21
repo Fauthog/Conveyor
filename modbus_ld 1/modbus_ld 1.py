@@ -169,7 +169,8 @@ def main():
                                     0x08, # NUmber of data bytes (C=12) 
                                     # 0x00, 0x00, 0x00, 0x00, # ?
                                     # 0x00, 0x00, 0xC3, 0x50, # 50000 units
-                                    0x00, 0x01, 0x86, 0xA0, # 500000 units
+                                    #0x00, 0x01, 0x86, 0xA0, # 100000 units
+                                    0xFF, 0xFE, 0x79, 0x60, # -100000 units
                                     0x00, 0x03, 0x0D, 0x40]) # 500.00 RPM
         # Calculate the CRC for the packet
         crc = calculate_crc(request_packet)
