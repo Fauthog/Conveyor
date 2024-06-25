@@ -27,6 +27,7 @@ char buffer[BUFFER_SIZE];
 // Variables to store the extracted float values
 int bigServoAngle = 500;
 int smallServoAngle = 500;
+int solenoid = 3;
 
 // Flag to indicate whether a complete set of values has been received
 bool newData = false;
@@ -42,6 +43,9 @@ void setup() {
   Serial.println(bigServoAngle);
   Serial.print("Small servo angle: ");
   Serial.println(smallServoAngle);
+
+  pinMode(30, OUTPUT);    // sets the digital pin 13 as output
+  digitalWrite(30, LOW);
 }
 
 void loop() {
@@ -67,7 +71,12 @@ void loop() {
 
   big_servo.writeMicroseconds(bigServoAngle);
   small_servo.writeMicroseconds(smallServoAngle);
-
+  if (solenoid != 0) {
+    digitalWrite(30, HIGH); // sets the digital pin 13 on
+  }
+  else {
+     digitalWrite(30, LOW);  // sets the digital pin 13 off
+  }
 
   // Small delay to debounce input readings
   delay(50);
@@ -98,6 +107,13 @@ void parseSerialData() {
     token = strtok(NULL, ",");
     if (token != NULL) {
       smallServoAngle = atoi(token); // Convert the token to a float
+      token = strtok(NULL, ",");
+      if (token != NULL) {
+        solenoid = atoi(token); // Convert the token to a float
     }
+    }
+   
   }
+//  Serial.print("Solenoid: ");
+//  Serial.println(solenoid);
 }
