@@ -27,7 +27,7 @@ char buffer[BUFFER_SIZE];
 // Variables to store the extracted float values
 int bigServoAngle = 500;
 int smallServoAngle = 500;
-int solenoid = 3;
+int solenoid = 0;
 
 // Flag to indicate whether a complete set of values has been received
 bool newData = false;

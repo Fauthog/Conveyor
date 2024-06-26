@@ -81,7 +81,6 @@ class demo():
                     self.bigServo=2450 
                     self.solenoid=1
                     self.writeToArduino()
-                    # time.sleep(0.05)
                     self.solenoid=0                  
                     self.writeToArduino()
             else:
@@ -100,22 +99,7 @@ class demo():
                     self.smallServo=1850
                     for i in range(5, 210, 10):
                         self.bigServo=1170-i
-                        self.writeToArduino() 
-                    # self.bigServo=1120                 
-                    # self.writeToArduino()
-                    # time.sleep(0.1)
-                    # self.smallServo=1850
-                    # self.bigServo=1070                  
-                    # self.writeToArduino()
-                    # time.sleep(0.1)
-                    # self.smallServo=1850
-                    # self.bigServo=1020                  
-                    # self.writeToArduino()
-                    # time.sleep(0.1)
-                    # self.smallServo=1850
-                    # self.bigServo=970                  
-                    # self.writeToArduino()
-                   
+                        self.writeToArduino()
             else:
                 return
             
@@ -130,6 +114,7 @@ class demo():
             if self.getUserInput(): 
                     print("drop off")                     
                     self.bigServo=2450   
+                    self.writeToArduino()
                     time.sleep(0.1)
                     self.smallServo=800               
                     self.writeToArduino()
