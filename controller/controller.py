@@ -1,7 +1,7 @@
 from threading import Thread
 import time
 from multiprocessing import Process, Queue
-import cv2
+# import cv2
 from PIL import Image
 # from picamera2 import Picamera2
 from mv_shrimp import find_shrimp_features
@@ -12,8 +12,7 @@ from alpha5 import Alpha5Client
 class driver():
 
     def __init__(self, ): 
-        self.arduinoPort = "COM4"
-        self.alpha5SmartPort = ""        
+        self.arduinoPort = "COM4"      
         self.setupSerialToArduino()
         self.setupAlpha()
 
@@ -33,7 +32,9 @@ class driver():
                 self.arduino.open()
         cmd = str(bigServo) + "," + str(smallServo) + "," + str(solenoid)
         # print("cmd:", cmd)
+
         self.arduino.write((cmd + "\r\n").encode('utf-8'))
+
         # print(self.arduino.readline())
         # print(self.arduino.readline())
         # print()
@@ -62,12 +63,12 @@ class driver():
         print('Set [S-ON] to OFF')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='OFF') # [S-ON]->CONT9
 
-    def immediateOperation(self, units:int, speed:int)->None:
+    def immediateOperation(self, Units:int, Speed:int)->None:
         print('Set [S-ON] to ON')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='ON') # [S-ON]->CONT9
 
         print('Send immediate operation setting')
-        self.alpha5.send_immediate_operation_setting(id=1, units=-13777, speed=5000)
+        self.alpha5.send_immediate_operation_setting(id=1, units=Units, speed=Speed)
         print('Set [START] to ON')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=1, state='ON') # [START]->CONT10
         print('Set [START] to OFF')
@@ -108,10 +109,9 @@ class statemachine():
             process.start()
     
     def homing(self):
-        self.driver.Actuators(2450, 1250, 0)
+        self.driver.Actuators(970, 1250, 0)
         time.sleep(1)
         self.driver.homing()
-        time.sleep(10)
         self.homeIsSet = True
     
     def shutdown(self):
@@ -160,7 +160,7 @@ class statemachine():
                     case "init":
                         self.driver.Actuators(970, 1250, 0)
                         time.sleep(1)
-                        self.driver.immediateOperation(30000, 10000)
+                        self.driver.immediateOperation(30000, 100000)
                         self.state0="loop"
                         
 
@@ -177,6 +177,7 @@ class statemachine():
                             self.state0 = "start"                        
 
                     case "start":
+                        # time.sleep(2)
                         self.driver.Actuators(2000, 1250, 0)
                         time.sleep(0.1)
                         self.state0 = "synchronize"
@@ -189,15 +190,15 @@ class statemachine():
                     
                     case "pickup":
                         self.driver.Actuators(2450, 1250, 0)
-                        time.sleep(0.1)
+                        time.sleep(0.4)
                         self.driver.Actuators(2450, 1850, 0)
                         time.sleep(0.1)
                         self.driver.Actuators(2450, 1850, 1)
                         self.driver.Actuators(2450, 1850, 0)
-                        time.sleep(0.05)
-                        self.driver.Actuators(1170, 1850, 0)
                         time.sleep(0.1)
-                        self.driver.immediateOperation(-30000, 10000)
+                        self.driver.Actuators(1170, 1850, 0)
+                        time.sleep(0.5)
+                        self.driver.immediateOperation(-30000, 100000)
                         self.state0 = "detection"
 
                     case "detection":
@@ -206,26 +207,28 @@ class statemachine():
                     
                     case "analyze":
                         self.driver.Actuators(1170, 1850, 0)
-                        time.sleep(1)
+                        time.sleep(0.04)
                         self.state0 = "cut"
                         
                     case "cut":
                         for i in range(5, 210, 10):
-                            self.driver.Actuators(1170-i, 1850, 0)                        
-                        time.sleep(0.1)
+                            self.driver.Actuators(1170-i, 1850, 0)
+                            time.sleep(0.05)                        
+                        
                         self.state0 = "drop off"
 
                     case "drop off":
                         self.driver.Actuators(2450, 1850, 0)
-                        time.sleep(0.2)
+                        time.sleep(1)
                         self.driver.Actuators(2450, 800, 0)
-                        time.sleep(0.1)
+                        time.sleep(0.5)
                         self.driver.Actuators(2000, 1250, 0)
                         self.state0 = "return"
 
                     case "return":
-                        self.driver.immediateOperation(30000, 10000)
-                        time.sleep(1)
+                        
+                        self.driver.immediateOperation(30000, 100000)
+                        
                         self.state0 = "loop"
                     
                     case _:
@@ -235,10 +238,10 @@ class statemachine():
                
                
             else:
-                time.sleep(0.1)            
+                time.sleep(0.03)            
 
             
-            time.sleep(0.008)
+            time.sleep(0.08)
 
 class camera():
     def __init__(self):

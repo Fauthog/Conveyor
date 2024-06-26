@@ -93,7 +93,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.mode_label = customtkinter.CTkLabel(self.control_frame, text=self.Mode)
         self.mode_label.grid(row=2, column=2, padx=20, pady=(10, 0))
 
-        self.homing_btn = customtkinter.CTkButton(self.control_frame, text="Mode", anchor="w", command=self.homing_callback)
+        self.homing_btn = customtkinter.CTkButton(self.control_frame, text="Homing", anchor="w", command=self.homing_callback)
         self.homing_btn.grid(row=3, column=0, padx=20, pady=(10, 0))
 
         
