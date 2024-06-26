@@ -1,10 +1,9 @@
 from threading import Thread
-import RPi.GPIO as GPIO
 import time
 from multiprocessing import Process, Queue
 import cv2
 from PIL import Image
-from picamera2 import Picamera2
+# from picamera2 import Picamera2
 from mv_shrimp import find_shrimp_features
 import serial
  
@@ -18,8 +17,8 @@ class driver():
 
     def setupSerialToArduino(self)->None:
         self.arduino = serial.Serial(port=self.arduinoPort, baudrate=9600, timeout=2)
-        print(self.arduino.readline())
-        print(self.arduino.readline())
+        # print(self.arduino.readline())
+        # print(self.arduino.readline())
     
     def writeToArduino(self, bigServo:int, smallServo:int, solenoid:int)->None:
         if not self.arduino.is_open:
@@ -409,7 +408,8 @@ class camera():
 class governor():
     def __init__(self):   
         self.driver = driver()
-        self.camera = camera()
+        # self.camera = camera()
+        self.camera = None
         self.statemachine = statemachine(self.driver, self.camera)
         self.shutdown:bool = False
         self.state_0:str = ""
@@ -424,9 +424,9 @@ class governor():
         while True:
             if self.shutdown:
                 return
-            self.state_0, self.state_1, error = self.statemachine.getStates()
+            self.state_0, self.state_1, self.error = self.statemachine.getStates()
             
-            self.currentFrame = self.camera.getCurrentFrame()
+            # self.currentFrame = self.camera.getCurrentFrame()
             time.sleep(0.05)
             
     
