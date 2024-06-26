@@ -6,6 +6,7 @@ from PIL import Image
 # from picamera2 import Picamera2
 from mv_shrimp import find_shrimp_features
 import serial
+from alpha5 import Alpha5Client
  
 
 class driver():
@@ -14,6 +15,13 @@ class driver():
         self.arduinoPort = "COM4"
         self.alpha5SmartPort = ""        
         self.setupSerialToArduino()
+        self.setupAlpha()
+
+    def setupAlpha(self)->None:
+        self.alpha5 = Alpha5Client("COM12")
+        self.alpha5.create_client()
+        self.alpha5.connect()
+        self.alpha5.set_show_query_response(False)
 
     def setupSerialToArduino(self)->None:
         self.arduino = serial.Serial(port=self.arduinoPort, baudrate=9600, timeout=2)
@@ -37,9 +45,41 @@ class driver():
             self.arduino.close()   
         
     def Actuators(self, bigServo:int, smallServo:int, solenoid:int)->None:
-        self.writeToArduino(bigServo, smallServo, solenoid)          
-     
+        self.writeToArduino(bigServo, smallServo, solenoid)  
 
+    def homing(self)->None:
+        print('Set [S-ON] to ON')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='ON') # [S-ON]->CONT9
+    
+        print('Issue homing command')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=2, state='ON') # [ORG]->CONT11
+
+        print("Homing...")
+        print('Wait for the operatio to complete')
+        self.alpha5.wait_operation_complete(id=1)
+        print('done!')        
+     
+        print('Set [S-ON] to OFF')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='OFF') # [S-ON]->CONT9
+
+    def immediateOperation(self, units:int, speed:int)->None:
+        print('Set [S-ON] to ON')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='ON') # [S-ON]->CONT9
+
+        print('Send immediate operation setting')
+        self.alpha5.send_immediate_operation_setting(id=1, units=-13777, speed=5000)
+        print('Set [START] to ON')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=1, state='ON') # [START]->CONT10
+        print('Set [START] to OFF')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=1, state='OFF') # [START]->CONT10
+
+
+        print('Wait for the operatio to complete')
+        self.alpha5.wait_operation_complete(id=1)
+
+
+        print('Set [S-ON] to OFF')
+        self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='OFF') # [S-ON]->CONT9
     
 
 class statemachine():
@@ -70,6 +110,8 @@ class statemachine():
     def homing(self):
         self.driver.Actuators(2450, 1250, 0)
         time.sleep(1)
+        self.driver.homing()
+        time.sleep(10)
         self.homeIsSet = True
     
     def shutdown(self):
@@ -118,6 +160,7 @@ class statemachine():
                     case "init":
                         self.driver.Actuators(970, 1250, 0)
                         time.sleep(1)
+                        self.driver.immediateOperation(30000, 10000)
                         self.state0="loop"
                         
 
@@ -154,6 +197,7 @@ class statemachine():
                         time.sleep(0.05)
                         self.driver.Actuators(1170, 1850, 0)
                         time.sleep(0.1)
+                        self.driver.immediateOperation(-30000, 10000)
                         self.state0 = "detection"
 
                     case "detection":
@@ -180,7 +224,8 @@ class statemachine():
                         self.state0 = "return"
 
                     case "return":
-                        time.sleep(0.2)
+                        self.driver.immediateOperation(30000, 10000)
+                        time.sleep(1)
                         self.state0 = "loop"
                     
                     case _:
