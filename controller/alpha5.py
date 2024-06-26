@@ -307,8 +307,8 @@ class Alpha5Client:
             # Receive the response packet
             oc_response_packet = self.client.socket.read(self.client_buffer_size)  # Adjust buffer size if necessary
             #print(f"Response:\t{[hex(byte) for byte in oc_response_packet]}")
-            time.sleep(0.005)# Not sure if this is needed?
+            # time.sleep(0.005)# Not sure if this is needed?
 
             if show_feedback_position:
                 position = self.get_feedback_position(id=id)
-                print("feedback position =", position)
+                # print("feedback position =", position)

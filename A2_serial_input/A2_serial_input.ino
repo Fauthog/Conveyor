@@ -33,7 +33,7 @@ int solenoid = 0;
 bool newData = false;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   
   // Attach servos to the defined pins
   big_servo.attach(bigServoPin, 970, 2450); // 550, 2400 custom range for DS51150-12V servo

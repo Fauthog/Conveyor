@@ -23,7 +23,7 @@ class driver():
         self.alpha5.set_show_query_response(False)
 
     def setupSerialToArduino(self)->None:
-        self.arduino = serial.Serial(port=self.arduinoPort, baudrate=9600, timeout=2)
+        self.arduino = serial.Serial(port=self.arduinoPort, baudrate=115200, timeout=2)
         # print(self.arduino.readline())
         # print(self.arduino.readline())
     
@@ -64,22 +64,22 @@ class driver():
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='OFF') # [S-ON]->CONT9
 
     def immediateOperation(self, Units:int, Speed:int)->None:
-        print('Set [S-ON] to ON')
+        # print('Set [S-ON] to ON')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='ON') # [S-ON]->CONT9
 
-        print('Send immediate operation setting')
+        # print('Send immediate operation setting')
         self.alpha5.send_immediate_operation_setting(id=1, units=Units, speed=Speed)
-        print('Set [START] to ON')
+        # print('Set [START] to ON')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=1, state='ON') # [START]->CONT10
-        print('Set [START] to OFF')
+        # print('Set [START] to OFF')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=1, state='OFF') # [START]->CONT10
 
 
-        print('Wait for the operatio to complete')
+        # print('Wait for the operation to complete')
         self.alpha5.wait_operation_complete(id=1)
 
 
-        print('Set [S-ON] to OFF')
+        # print('Set [S-ON] to OFF')
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=0, state='OFF') # [S-ON]->CONT9
     
 
@@ -131,9 +131,9 @@ class statemachine():
     def setCycling(self, cycling:bool)->None:
         self.cycling = cycling
 
-    def stop(self, hold:bool):
+    def stop(self, hold:bool)->None:
         self.hold=hold
-        self.driver.hold(hold)
+        
 
     def start(self):
         # print("state machine start")
@@ -179,18 +179,18 @@ class statemachine():
                     case "start":
                         # time.sleep(2)
                         self.driver.Actuators(2000, 1250, 0)
-                        time.sleep(0.1)
+                        # time.sleep(0.1)
                         self.state0 = "synchronize"
                         
 
                     case "synchronize":
                         self.driver.Actuators(2000, 1250, 0)
-                        time.sleep(0.1)                    
+                        # time.sleep(0.1)                    
                         self.state0 = "pickup"
                     
                     case "pickup":
                         self.driver.Actuators(2450, 1250, 0)
-                        time.sleep(0.4)
+                        time.sleep(0.3)
                         self.driver.Actuators(2450, 1850, 0)
                         time.sleep(0.1)
                         self.driver.Actuators(2450, 1850, 1)
@@ -206,14 +206,14 @@ class statemachine():
 
                     
                     case "analyze":
-                        self.driver.Actuators(1170, 1850, 0)
-                        time.sleep(0.04)
+                        # self.driver.Actuators(1170, 1850, 0)
+                        # time.sleep(0.04)
                         self.state0 = "cut"
                         
                     case "cut":
                         for i in range(5, 210, 10):
                             self.driver.Actuators(1170-i, 1850, 0)
-                            time.sleep(0.05)                        
+                            time.sleep(0.035)                        
                         
                         self.state0 = "drop off"
 
@@ -223,6 +223,7 @@ class statemachine():
                         self.driver.Actuators(2450, 800, 0)
                         time.sleep(0.5)
                         self.driver.Actuators(2000, 1250, 0)
+                        time.sleep(0.1)
                         self.state0 = "return"
 
                     case "return":
