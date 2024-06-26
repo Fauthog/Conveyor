@@ -102,7 +102,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state")
         self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.states=["init", "limit", "wait", "start", "synchronize", "pickup","detection", "analyze", "cut", "drop off", "return"]
+        self.states=["init", "loop", "wait", "start", "synchronize", "pickup", "detection", "analyze", "cut", "drop off", "return"]
         self.labels_0=[]
         self.labels_1=[]
     

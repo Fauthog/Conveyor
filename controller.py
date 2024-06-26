@@ -23,7 +23,6 @@ class driver():
     
     def writeToArduino(self, bigServo:int, smallServo:int, solenoid:int)->None:
         if not self.arduino.is_open:
-                print("not open")
                 self.arduino.open()
         cmd = str(bigServo) + "," + str(smallServo) + "," + str(solenoid)
         # print("cmd:", cmd)
@@ -182,7 +181,8 @@ class statemachine():
                         self.state0 = "return"
 
                     case "return":
-                        self.state0 = "limit"
+                        time.sleep(0.2)
+                        self.state0 = "loop"
                     
                     case _:
                         ...
