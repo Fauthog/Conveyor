@@ -20,7 +20,7 @@ def calculate_crc(data):
 
 def main():
     # Define the serial port parameters
-    port = 'COM4'          # Change this to the correct COM port on your machine
+    port = 'COM12'          # Change this to the correct COM port on your machine
     baudrate = 38400 #  9600        # Set the baud rate for the serial connection
     parity = 'E'           # Set parity ('N' for None, 'E' for Even, 'O' for Odd)
     stopbits = 1           # Set the number of stop bits (1 or 2)
@@ -110,26 +110,26 @@ def main():
         # print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
         # time.sleep(0.005) # Not sure if this is needed?
 
-        # print("-------------------")
-        # print("Set [S-ON] to on")        
-        # # Write “1” (ON) to bit0 to turn [S-ON] on
-        # request_packet = bytearray([0x01, # Slave address
-        #                             0x10, # Write operation
-        #                             0x00, 0x00, # Address of CONT
-        #                             0x00, 0x02, # Number of registers
-        #                             0x04, # No. of data bytes = 4
-        #                             0x00, 0x00, 0x00, 0b00000001]) # bit assignment. See page 13-16
-        # # Calculate the CRC for the packet
-        # crc = calculate_crc(request_packet)
-        # crc_bytes = crc.to_bytes(2, byteorder='little')
-        # request_packet.extend(crc_bytes)
-        # # Send the request packet
-        # client.socket.write(request_packet)
-        # print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
-        # # Receive the response packet
-        # response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
-        # print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
-        # time.sleep(0.005) # Not sure if this is needed?
+        print("-------------------")
+        print("Set [S-ON] to on")        
+        # Write “1” (ON) to bit0 to turn [S-ON] on
+        request_packet = bytearray([0x01, # Slave address
+                                    0x10, # Write operation
+                                    0x00, 0x00, # Address of CONT
+                                    0x00, 0x02, # Number of registers
+                                    0x04, # No. of data bytes = 4
+                                    0x00, 0x00, 0x00, 0b00000001]) # bit assignment. See page 13-16
+        # Calculate the CRC for the packet
+        crc = calculate_crc(request_packet)
+        crc_bytes = crc.to_bytes(2, byteorder='little')
+        request_packet.extend(crc_bytes)
+        # Send the request packet
+        client.socket.write(request_packet)
+        print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
+        # Receive the response packet
+        response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
+        print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
+        time.sleep(0.005) # Not sure if this is needed?
 
         # print("-------------------")
         # print("Set PA1_01 for positioning operation")
@@ -169,8 +169,8 @@ def main():
                                     0x08, # NUmber of data bytes (C=12) 
                                     # 0x00, 0x00, 0x00, 0x00, # ?
                                     # 0x00, 0x00, 0xC3, 0x50, # 50000 units
-                                    #0x00, 0x01, 0x86, 0xA0, # 100000 units
-                                    0xFF, 0xFE, 0x79, 0x60, # -100000 units
+                                    0x00, 0x01, 0x86, 0xA0, # 100000 units
+                                    #0xFF, 0xFE, 0x79, 0x60, # -100000 units
                                     0x00, 0x00, 0x0D, 0x40]) # 500.00 RPM
         # Calculate the CRC for the packet
         crc = calculate_crc(request_packet)
@@ -192,7 +192,7 @@ def main():
                                     0x00, 0x00, # Address of CONT
                                     0x00, 0x02, # Number of registers
                                     0x04, # No. of data bytes = 4
-                                    0x00, 0x00, 0x00, 0b00000001]) # bit assignment. See page 13-16
+                                    0x00, 0x00, 0x00, 0b00000011]) # bit assignment. See page 13-16
         # Calculate the CRC for the packet
         crc = calculate_crc(request_packet)
         crc_bytes = crc.to_bytes(2, byteorder='little')

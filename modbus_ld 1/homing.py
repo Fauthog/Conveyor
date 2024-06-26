@@ -108,26 +108,26 @@ def main():
         print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
         time.sleep(0.005)# Not sure if this is needed?
 
-        print("-------------------")
-        print("Assign [ORG] to CONT11")
-        # CONT11 at PA3_11 address (HEX) is 4210 (p.13-17)
-        request_packet = bytearray([0x01, # Slave address
-                                    0x10, # Write operation
-                                    0x42, 0x10, # PA3_10 address
-                                    0x00, 0x02, # Number of registers
-                                    0x04, # No. of data bytes = 4
-                                    0x00, 0x00, 0x00, 0x05]) # data=5 [ORG]}
-        # Calculate the CRC for the packet
-        crc = calculate_crc(request_packet)
-        crc_bytes = crc.to_bytes(2, byteorder='little')
-        request_packet.extend(crc_bytes)
-        # Send the request packet
-        client.socket.write(request_packet)
-        print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
-        # Receive the response packet
-        response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
-        print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
-        time.sleep(0.005) # Not sure if this is needed?
+        # print("-------------------")
+        # print("Assign [ORG] to CONT11")
+        # # CONT11 at PA3_11 address (HEX) is 4210 (p.13-17)
+        # request_packet = bytearray([0x01, # Slave address
+        #                             0x10, # Write operation
+        #                             0x42, 0x10, # PA3_10 address
+        #                             0x00, 0x02, # Number of registers
+        #                             0x04, # No. of data bytes = 4
+        #                             0x00, 0x00, 0x00, 0x05]) # data=5 [ORG]}
+        # # Calculate the CRC for the packet
+        # crc = calculate_crc(request_packet)
+        # crc_bytes = crc.to_bytes(2, byteorder='little')
+        # request_packet.extend(crc_bytes)
+        # # Send the request packet
+        # client.socket.write(request_packet)
+        # print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
+        # # Receive the response packet
+        # response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
+        # print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
+        # time.sleep(0.005) # Not sure if this is needed?
 
         print("-------------------")
         print("Set [S-ON] to on")        
@@ -225,27 +225,27 @@ def main():
         # Set to absolute position
         # PA1_02 = 1 (0=incremental, 1=absolute)
 
-        print("-------------------")
-        print("Set PA1_02 for absolute operation")
-        # Set PA1_02 to 1 (0=incremental, 1=absolute)
-        # PA1_02 address (HEX) is 4001 (p.13-17)
-        request_packet = bytearray([0x01, # Slave address
-                                    0x10, # Write operation
-                                    0x40, 0x01, # PA1_02 address
-                                    0x00, 0x02, # Number of registers
-                                    0x04, # No. of data bytes = 4
-                                    0x00, 0x00, 0x00, 0x00]) # Data=1 (absolute)
-        # Calculate the CRC for the packet
-        crc = calculate_crc(request_packet)
-        crc_bytes = crc.to_bytes(2, byteorder='little')
-        request_packet.extend(crc_bytes)
-        # Send the request packet
-        client.socket.write(request_packet)
-        print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
-        # Receive the response packet
-        response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
-        print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
-        time.sleep(0.005) # Not sure if this is needed?
+        # print("-------------------")
+        # print("Set PA1_02 for absolute operation")
+        # # Set PA1_02 to 1 (0=incremental, 1=absolute)
+        # # PA1_02 address (HEX) is 4001 (p.13-17)
+        # request_packet = bytearray([0x01, # Slave address
+        #                             0x10, # Write operation
+        #                             0x40, 0x01, # PA1_02 address
+        #                             0x00, 0x02, # Number of registers
+        #                             0x04, # No. of data bytes = 4
+        #                             0x00, 0x00, 0x00, 0x00]) # Data=1 (absolute)
+        # # Calculate the CRC for the packet
+        # crc = calculate_crc(request_packet)
+        # crc_bytes = crc.to_bytes(2, byteorder='little')
+        # request_packet.extend(crc_bytes)
+        # # Send the request packet
+        # client.socket.write(request_packet)
+        # print(f"Query:\t\t{[hex(byte) for byte in request_packet]}")
+        # # Receive the response packet
+        # response_packet = client.socket.read(1024)  # Adjust buffer size if necessary
+        # print(f"Response:\t\t{[hex(byte) for byte in response_packet]}")
+        # time.sleep(0.005) # Not sure if this is needed?
 
 
 
