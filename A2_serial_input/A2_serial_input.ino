@@ -39,10 +39,10 @@ void setup() {
   big_servo.attach(bigServoPin, 970, 2450); // 550, 2400 custom range for DS51150-12V servo
   small_servo.attach(smallServoPin, 500, 1150);
 
-  Serial.print("Big servo angle: ");
-  Serial.println(bigServoAngle);
-  Serial.print("Small servo angle: ");
-  Serial.println(smallServoAngle);
+//  Serial.print("Big servo angle: ");
+//  Serial.println(bigServoAngle);
+//  Serial.print("Small servo angle: ");
+//  Serial.println(smallServoAngle);
 
   pinMode(30, OUTPUT);    // sets the digital pin 13 as output
   digitalWrite(30, LOW);
@@ -56,10 +56,10 @@ void loop() {
   if (newData) {
     parseSerialData();
     // Print the parsed values
-    Serial.print("Big servo angle: ");
-    Serial.println(bigServoAngle);
-    Serial.print("Small servo angle: ");
-    Serial.println(smallServoAngle);
+//    Serial.print("Big servo angle: ");
+//    Serial.println(bigServoAngle);
+//    Serial.print("Small servo angle: ");
+//    Serial.println(smallServoAngle);
     
     // Reset the flag
     newData = false;

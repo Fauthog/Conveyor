@@ -5,7 +5,7 @@ import os
 import time
 from PIL import Image
 from threading import Thread
-import conveyor_controller2
+import controller
 
 
 
@@ -93,6 +93,9 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.mode_label = customtkinter.CTkLabel(self.control_frame, text=self.Mode)
         self.mode_label.grid(row=2, column=2, padx=20, pady=(10, 0))
 
+        self.homing_btn = customtkinter.CTkButton(self.control_frame, text="Mode", anchor="w", command=self.homing_callback)
+        self.homing_btn.grid(row=3, column=0, padx=20, pady=(10, 0))
+
         
         self.state_frame = customtkinter.CTkFrame(self)
         self.state_frame.grid(row=0, column=2, padx=(20, 0), pady=(20, 0), sticky="nsew")
@@ -125,7 +128,7 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         self.error_label.grid(row=13, column=0, padx=20, pady=0, sticky="nsew")
         
         
-        self.governor = conveyor_controller2.governor()
+        self.governor = controller.governor()
         self.update()
 
  
@@ -221,6 +224,8 @@ class GUI_TabFrame(customtkinter.CTkFrame):
     def reset_callback(self):
         self.governor.userInput("reset")
 
+    def homing_callback(self):
+        self.governor.userInput("homing")
 
 class Options_TabFrame(customtkinter.CTkFrame):
     def __init__(self, master, logo):
