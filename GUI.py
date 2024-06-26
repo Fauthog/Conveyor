@@ -5,7 +5,7 @@ import os
 import time
 from PIL import Image
 from threading import Thread
-import conveyor_controller
+import conveyor_controller2
 
 
 
@@ -19,14 +19,14 @@ class App(customtkinter.CTk):
         
         # configure window
         self.title("GUI")
-        self.geometry(f"{1920}x{900}")
+        self.geometry(f"{1500}x{700}")
 
         # configure grid layout (4x4)
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure((0, 1), weight=1)
 
         # create tabview
-        self.tabview = customtkinter.CTkTabview(self, width=1920, height=900)
+        self.tabview = customtkinter.CTkTabview(self, width=1500, height=700)
         self.tabview.grid(row=0, column=0)   
         self.tabview.add("GUI")   
         self.tabview.add("Options")  
@@ -50,153 +50,177 @@ class GUI_TabFrame(customtkinter.CTkFrame):
         super().__init__(master)
 
         self.StopThread:bool = False
-        self.currentFrame_thread = None
-        self.StopState:bool = False
+        self.currentFrame_thread = None        
+        self.Pause:bool = True
         self.On:bool = False
+        self.Mode:str = "single"
        
-        self.logo_frame = customtkinter.CTkFrame(self)
-        self.logo_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="sw")
+        # self.logo_frame = customtkinter.CTkFrame(self)
+        # self.logo_frame.grid(row=0, column=0, padx=10, pady=(10, 0), sticky="sw")
 
         
-        self.logo_image = logo
-        self.navigation_frame_label = customtkinter.CTkLabel(self.logo_frame, image=self.logo_image, text="Logo")
-        self.navigation_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        # self.logo_image = logo
+        # self.navigation_frame_label = customtkinter.CTkLabel(self.logo_frame, image=self.logo_image, text="Logo")
+        # self.navigation_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.Preview_frame = customtkinter.CTkFrame(self, height = 500)
-        self.Preview_frame.grid(row=1, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.Preview_frame = customtkinter.CTkFrame(self)
+        self.Preview_frame.grid(row=0, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.preview_frame_label = customtkinter.CTkLabel(self.Preview_frame,  text="Preview")
         self.preview_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         self.preview_frame_image = customtkinter.CTkLabel(self.Preview_frame, width=240, text="")
         self.preview_frame_image.grid(row=1, column=0, padx=(20,20), pady=(20,20))
 
         self.control_frame = customtkinter.CTkFrame(self)
-        self.control_frame.grid(row=2, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.control_frame.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.control_frame_label = customtkinter.CTkLabel(self.control_frame,  text="control")
         self.control_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+        self.logo_image = logo
+        self.logo_label = customtkinter.CTkLabel(self.control_frame, image=self.logo_image, text="Logo")
+        self.logo_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         
         self.start_label = customtkinter.CTkButton(self.control_frame, text="Start", anchor="s", command=self.start_callback)
-        self.start_label.grid(row=3, column=0, padx=20, pady=(10, 0))
+        self.start_label.grid(row=1, column=0, padx=20, pady=(10, 0))
 
-        self.stop_label = customtkinter.CTkButton(self.control_frame, text="Stop", anchor="s", command=self.stop_callback)
-        self.stop_label.grid(row=3, column=1, padx=20, pady=(10, 0))
+        self.pauseResume_label = customtkinter.CTkButton(self.control_frame, text="Pause", anchor="s", command=self.pauseResume_callback)
+        self.pauseResume_label.grid(row=1, column=1, padx=20, pady=(10, 0))
 
         self.reset_label = customtkinter.CTkButton(self.control_frame, text="Reset", anchor="s", command=self.reset_callback)
-        self.reset_label.grid(row=3, column=2, padx=20, pady=(10, 0))
+        self.reset_label.grid(row=2, column=0, padx=20, pady=(10, 0))
+        
+        self.mode_btn = customtkinter.CTkButton(self.control_frame, text="Mode", anchor="w", command=self.mode_callback)
+        self.mode_btn.grid(row=2, column=1, padx=20, pady=(10, 0))
 
-        self.OnOff_label = customtkinter.CTkButton(self.control_frame, text="On", anchor="s", command=self.OnOff_callback)
-        self.OnOff_label.grid(row=3, column=3, padx=20, pady=(10, 0))
+        self.mode_label = customtkinter.CTkLabel(self.control_frame, text=self.Mode)
+        self.mode_label.grid(row=2, column=2, padx=20, pady=(10, 0))
 
-        # self.scaling_label = customtkinter.CTkLabel(self.control_frame, text="Speed", anchor="w")
-        # self.scaling_label.grid(row=4, column=0, padx=20, pady=(10, 0))
-
-        # self.speed = customtkinter.CTkOptionMenu(self.control_frame, values=["10%","50%","100%"],
-        #                                                        command=self.speed_event)
-        # self.speed.grid(row=5, column=0, padx=20, pady=(10, 20))
-        # self.speed.set("100%")
-
-        self.mode_label = customtkinter.CTkLabel(self.control_frame, text="Mode", anchor="w")
-        self.mode_label.grid(row=4, column=0, padx=20, pady=(10, 0))
-
-        self.continues = customtkinter.CTkCheckBox(self.control_frame, text="continuous")
-        self.continues.grid(row=5, column=0, padx=20, pady=(10, 0))
-
-        self.state_frame = customtkinter.CTkFrame(self, width=200)
-        self.state_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
-        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state", width=500)
+        
+        self.state_frame = customtkinter.CTkFrame(self)
+        self.state_frame.grid(row=0, column=2, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.state_frame_label = customtkinter.CTkLabel(self.state_frame,  text="state")
         self.state_frame_label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.current_state_label = customtkinter.CTkLabel(self.state_frame,  text="current state")
-        self.current_state_label.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        self.states=["init", "limit", "wait", "start", "synchronize", "pickup","detection", "analyze", "cut", "drop off", "return"]
+        self.labels_0=[]
+        self.labels_1=[]
+    
+        self.label_1 = customtkinter.CTkLabel(self.state_frame,  text="state 1")
+        self.label_1.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
         
+        self.label_0 = customtkinter.CTkLabel(self.state_frame,  text="state 0")
+        self.label_0.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        
+        
+        for i in range(len(self.states)):
+            label = customtkinter.CTkLabel(self.state_frame,  text=self.states[i])
+            label.grid(row=i+2, column=0, padx=20, pady=0, sticky="nsew")
+            self.labels_0.append(label)
 
-        self.governor = conveyor_controller.governor()
-        #self.governor = None
-        self.start_label.configure(state="disabled")
-        self.stop_label.configure(state="disabled")
-        self.reset_label.configure(state="disabled")
+        
+        for j in range(len(self.states)):
+            label = customtkinter.CTkLabel(self.state_frame,  text=self.states[j])
+            label.grid(row=j+2, column=1, padx=20, pady=0, sticky="nsew")
+            self.labels_1.append(label)
+
+        self.error_label = customtkinter.CTkLabel(self.state_frame, text="error")
+        self.error_label.grid(row=13, column=0, padx=20, pady=0, sticky="nsew")
+        
+        
+        self.governor = conveyor_controller2.governor()
+        self.update()
+
+ 
 
     def getCurrentFrame(self):
         image = None
+        time.sleep(2)
         while True:
+                # self.label_0.configure(fg_color="green")
                 if self.StopThread:
                         return
                 time.sleep(0.1)
-               
-                _i = self.governor.convertedImage
+
+                _i = self.governor.getCurrentFrame()
                 if _i != image:
                     image=_i
                     if image is not None:                
                             _image = customtkinter.CTkImage(light_image=image,
-                                        size=(320, 240))
+                                        size=(720, 480))
                             self.preview_frame_image.configure(image = _image)
-                state = self.governor.state
-                if state == "No Shrimp":
-                    self.current_state_label.configure(fg_color="red")
-                else:
-                    self.current_state_label.configure(fg_color="transparent")
-                    
-                self.current_state_label.configure(text = state)
+                            
+    
+
+       
+    def highlightlabel(self, labels, state:str)->None:
+        for label in labels:
+            label.configure(fg_color="transparent")
+        try:
+            index = self.states.index(state)
+            labels[index].configure(fg_color="green")
+        except:
+            print("no index corresponding to state ", state, "found")
+
+    def showError(self, error:str):
+        if error != "":
+            self.error_label.configure(fg_color="transparent", text=error)
+        else:
+            self.error_label.configure(fg_color="red", text=error)
+
+    def getCurrentState(self):
+        state0:str = ""
+        _state0:str = ""
+        state1:str = ""
+        _state1:str = ""
+        error:str = ""
+        _error:str= ""
+        time.sleep(2)
+        while True:
+            state0, state1, error = self.governor.getCurrentState()            
+            if state0 != _state0:
+                self.highlightlabel(self.labels_0, state0)
+                _state0 = state0[:]
+            if state1 != _state1:
+                self.highlightlabel(self.labels_1, state1)
+                _state1 = state1[:]
+            if error != _error:
+                self.showError(error)
+                _error = error[:]
+            time.sleep(0.05)
 
     def update(self):
         self.StopThread = False
         self.currentFrame_thread = Thread(target = self.getCurrentFrame)
         self.currentFrame_thread.start()
-
-    def speed_event(self, speed_value:str):
-        speed = float(speed_value.replace("%", "")) / 100
-        self.governor.setSpeed(speed)
-
-    def mode_event(self):
-        if self.continues.get()==1:
-            self.governor.setMode("continuous")
-        else:
-            self.governor.setMode("single")
-
-    def start_callback(self):
-        self.governor.start_controller()
-        
-
-    def stop_callback(self):
-        if not self.StopState:
-            self.governor.stop_controller()
-            self.stop_label.configure(text = "resume")
-            self.StopState=True
-        else:
-            self.governor.resume_controller()
-            self.stop_label.configure(text = "stop")
-            self.StopState=False
-        
+        self.currentState_thread = Thread(target = self.getCurrentState)
+        self.currentState_thread.start()
     
+    def start_callback(self):
+        self.governor.userInput("start")
+
+    def pauseResume_callback(self):
+        if self.Pause:
+            self.governor.userInput("hold")
+            self.pauseResume_label.configure(text="Resume")
+            self.Pause = False
+            
+        else:
+            self.governor.userInput("resume")
+            self.pauseResume_label.configure(text="Pause")
+            self.Pause = True
+
+    def mode_callback(self):
+        if self.Mode == "single":
+            self.Mode = "cycle"
+            self.mode_label.configure(text=self.Mode)
+            self.governor.userInput("cycle")
+        else:
+            self.Mode = "single"
+            self.mode_label.configure(text=self.Mode)
+            self.governor.userInput("single")
+              
+
     def reset_callback(self):
-        self.mode_event()
-        time.sleep(0.1)
-        self.governor.reset()
+        self.governor.userInput("reset")
 
-    def OnOff_callback(self):
-        if not self.On:
-                self.On=True
-                self.OnOff_label.configure(text = "Off")
-                self.start_label.configure(state="normal")
-                self.stop_label.configure(state="normal")
-                self.reset_label.configure(state="normal")
-                # self.continues.configure(state="diabled")
-
-                self.governor.OnOff("On")
-                self.update()          
-                
-        else:   
-                self.On = False
-                self.OnOff_label.configure(text = "On")
-                self.start_label.configure(state="disabled")
-                self.stop_label.configure(state="disabled")
-                self.reset_label.configure(state="disabled")
-                # self.continues.configure(state="normal")
-                time.sleep(0.1)
-                self.governor.OnOff("Off")
-                self.StopThread = True
-                #if self.currentFrame_thread is not None:
-                #       self.currentFrame_thread.join()
-                        
 
 class Options_TabFrame(customtkinter.CTkFrame):
     def __init__(self, master, logo):
