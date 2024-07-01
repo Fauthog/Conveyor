@@ -7,10 +7,10 @@ close: 2450 (~27.7)
 open: 970 (~175.7)
 
 homing: 1500
-detection: 1290
+detection: 1250
 cutting: 1100
 
-cutting position: 4369
+cutting position: 4363
 
 
 cutter servo

@@ -10,10 +10,12 @@
 // Define servo objects
 Servo big_servo;
 Servo small_servo;
+Servo third_servo;
 
 // Define servo pins
 const int bigServoPin = 9;
 const int smallServoPin = 10;
+const int thirdServoPin = 11;
 
 // Define the maximum length of the input string
 const int BUFFER_SIZE = 64;
@@ -25,19 +27,21 @@ const char DELIMITER = ',';
 char buffer[BUFFER_SIZE];
 
 // Variables to store the extracted float values
-int bigServoAngle = 500;
-int smallServoAngle = 500;
+int bigServoAngle = 1500;
+int smallServoAngle = 800;
 int solenoid = 0;
+int thirdServoAngle = 1475;
 
 // Flag to indicate whether a complete set of values has been received
 bool newData = false;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   // Attach servos to the defined pins
   big_servo.attach(bigServoPin, 970, 2450); // 550, 2400 custom range for DS51150-12V servo
   small_servo.attach(smallServoPin, 500, 1150);
+  third_servo.attach(thirdServoPin, 500, 2500);
 
 //  Serial.print("Big servo angle: ");
 //  Serial.println(bigServoAngle);
@@ -71,6 +75,7 @@ void loop() {
 
   big_servo.writeMicroseconds(bigServoAngle);
   small_servo.writeMicroseconds(smallServoAngle);
+  third_servo.writeMicroseconds(thirdServoAngle);
   if (solenoid != 0) {
     digitalWrite(30, HIGH); // sets the digital pin 13 on
   }
@@ -110,6 +115,10 @@ void parseSerialData() {
       token = strtok(NULL, ",");
       if (token != NULL) {
         solenoid = atoi(token); // Convert the token to a float
+        token = strtok(NULL, ",");
+        if (token != NULL) {
+          thirdServoAngle = atoi(token); // Convert the token to a float
+    }
     }
     }
    
