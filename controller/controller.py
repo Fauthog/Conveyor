@@ -12,7 +12,7 @@ from alpha5 import Alpha5Client
 class driver():
 
     def __init__(self, ): 
-        self.arduinoPort = "/dev/ttyUSB2"      
+        self.arduinoPort = "/dev/ttyUSB1"      
         self.setupSerialToArduino()
         self.setupAlpha()
 
@@ -25,7 +25,8 @@ class driver():
     def setupSerialToArduino(self)->None:
         self.arduino = serial.Serial(port=self.arduinoPort, baudrate=9600, timeout=2)
         # print(self.arduino.readline())
-        # print(self.arduino.readline())
+        # print(self.arduino.readline())        
+
     
     def writeToArduino(self, bigServo:int, smallServo:int, solenoid:int)->None:
         if not self.arduino.is_open:
@@ -38,6 +39,14 @@ class driver():
         # print(self.arduino.readline())
         # print(self.arduino.readline())
         # print()
+        
+    def writeToArduinoCutter(self, bigServo:int, smallServo:int, solenoid:int, cutter:int)->None:   
+        if not self.arduino.is_open:
+                self.arduino.open()
+        cmd = str(bigServo) + "," + str(smallServo) + "," + str(solenoid) + "," + str(cutter)
+        # print("cmd:", cmd)
+
+        self.arduino.write((cmd + "\r\n").encode('utf-8'))
 
     def cleanUpArduinoConnection(self)->None:
         if self.arduino !="None":           
@@ -46,7 +55,10 @@ class driver():
             self.arduino.close()   
         
     def Actuators(self, bigServo:int, smallServo:int, solenoid:int)->None:
-        self.writeToArduino(bigServo, smallServo, solenoid)  
+        self.writeToArduino(bigServo, smallServo, solenoid) 
+        
+    def ActuatorsCutter(self, bigServo:int, smallServo:int, solenoid:int, cutter:int)->None:
+        self.writeToArduinoCutter(bigServo, smallServo, solenoid, cutter)
 
     def homing(self)->None:
         print('Set [S-ON] to ON')
@@ -158,14 +170,14 @@ class statemachine():
             if not self.hold and self.homeIsSet:
                 match self.state0:                
                     case "init":
-                        self.driver.Actuators(1500, 1250, 0)
+                        self.driver.ActuatorsCutter(1500, 1250, 0, 600)
                         time.sleep(1)
                         self.driver.immediateOperation(30000, 150000)
                         self.state0="loop"
                         
 
                     case "loop":   
-                            self.driver.Actuators(2000, 800, 0)                    
+                            self.driver.ActuatorsCutter(2000, 800, 0, 600)                    
                             if self.cycling:
                                 self.Start = True
                             else:
@@ -237,6 +249,9 @@ class statemachine():
                         time.sleep(0.5)
                         self.driver.Actuators(1500, 1250, 0)
                         time.sleep(0.5)
+                        self.driver.ActuatorsCutter(1500, 1250, 0, 2350)
+                        time.sleep(0.5)
+                        self.driver.ActuatorsCutter(1500, 1250, 0, 600)
                         self.state0 = "return"
 
                     case "return":
