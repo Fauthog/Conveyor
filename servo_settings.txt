@@ -14,6 +14,7 @@ cutting position: 4363
 
 
 cutter servo
-600 0 open
-2350 180 close
+600 0 open  1300
+2350 180 close 1980
+1600 grip
 1475 90

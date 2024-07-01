@@ -1,10 +1,10 @@
 from threading import Thread
 import time
 from multiprocessing import Process, Queue
-import cv2
+# import cv2
 from PIL import Image
-from picamera2 import Picamera2
-from mv_shrimp import find_shrimp_features
+# from picamera2 import Picamera2
+# from mv_shrimp import find_shrimp_features
 import serial
 from alpha5 import Alpha5Client
  
@@ -12,12 +12,12 @@ from alpha5 import Alpha5Client
 class driver():
 
     def __init__(self, ): 
-        self.arduinoPort = "/dev/ttyUSB1"      
+        self.arduinoPort = "COM4"      
         self.setupSerialToArduino()
         self.setupAlpha()
 
     def setupAlpha(self)->None:
-        self.alpha5 = Alpha5Client("/dev/ttyUSB0")
+        self.alpha5 = Alpha5Client("COM12")
         self.alpha5.create_client()
         self.alpha5.connect()
         self.alpha5.set_show_query_response(False)
@@ -170,14 +170,14 @@ class statemachine():
             if not self.hold and self.homeIsSet:
                 match self.state0:                
                     case "init":
-                        self.driver.ActuatorsCutter(1500, 1250, 0, 600)
+                        self.driver.ActuatorsCutter(1500, 1250, 0, 1300)
                         time.sleep(1)
                         self.driver.immediateOperation(30000, 150000)
                         self.state0="loop"
                         
 
                     case "loop":   
-                            self.driver.ActuatorsCutter(2000, 800, 0, 600)                    
+                            self.driver.ActuatorsCutter(2000, 800, 0, 1300)                    
                             if self.cycling:
                                 self.Start = True
                             else:
@@ -211,7 +211,7 @@ class statemachine():
                         time.sleep(0.1)
                         self.driver.Actuators(1500, 1950, 0)
                         time.sleep(1)
-                        self.driver.immediateOperation((-30000+4363),150000)
+                        self.driver.immediateOperation((-30000+4363),15000)
                         self.state0 = "detection"
 
                     case "detection":
@@ -226,15 +226,15 @@ class statemachine():
                     case "analyze":
                         self.driver.Actuators(1250, 1950, 0)
                         for k in range (0,5):
-                                found, lowerright = self.camera.getDelta()
-                                print("IR", found, lowerright)
+                                # found, lowerright = self.camera.getDelta()
+                                # print("IR", found, lowerright)
                                 time.sleep(0.1)
                         time.sleep(0.1)
                         self.state0 = "cut"
                         
                     case "cut":
                         for i in range(0, 310, 10):
-                            self.driver.Actuators(max(1250-i, 1100), 1950, 0)
+                            self.driver.Actuators(max(1250-i, 1000), 1950, 0)
                             # time.sleep(0.035)                        
                             time.sleep(0.1)
                         time.sleep(0.1)  
@@ -243,20 +243,21 @@ class statemachine():
                     case "drop off":
                         self.driver.Actuators(2450, 1950, 0)
                         time.sleep(1)
+                        self.driver.ActuatorsCutter(2450, 1950, 0, 1300)
+                        time.sleep(0.5)
+                        self.driver.ActuatorsCutter(2450, 1950, 0, 1600)
                         self.driver.Actuators(2450, 800, 0)
                         time.sleep(0.5)
                         self.driver.Actuators(2450, 800, 0)
                         time.sleep(0.5)
                         self.driver.Actuators(1500, 1250, 0)
-                        time.sleep(0.5)
-                        self.driver.ActuatorsCutter(1500, 1250, 0, 2350)
-                        time.sleep(0.5)
-                        self.driver.ActuatorsCutter(1500, 1250, 0, 600)
+                        time.sleep(1)
+                        self.driver.ActuatorsCutter(1500, 1250, 0, 1980)
                         self.state0 = "return"
 
                     case "return":
                         
-                        self.driver.immediateOperation((30000-4363), 150000)
+                        self.driver.immediateOperation((30000-4363), 15000)
                         
                         self.state0 = "loop"
                     
@@ -359,8 +360,8 @@ class camera():
 class governor():
     def __init__(self):   
         self.driver = driver()
-        self.camera = camera()
-        #self.camera = None
+        # self.camera = camera()
+        self.camera = None
         self.statemachine = statemachine(self.driver, self.camera)
         self.shutdown:bool = False
         self.state_0:str = ""
@@ -412,7 +413,7 @@ class governor():
                 self.statemachine.reset()
             case "homing":
                 self.statemachine.homing()
-                self.camera.getDelta()
+                # self.camera.getDelta()
             case _:
                 ...
 
