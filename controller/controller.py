@@ -56,7 +56,7 @@ class driver():
         self.alpha5.manipulate_virtualcont_bits(id=1, bit_index=2, state='ON') # [ORG]->CONT11
 
         print("Homing...")
-        print('Wait for the operatio to complete')
+        print('Wait for the operation to complete')
         self.alpha5.wait_operation_complete(id=1)
         print('done!')        
      
@@ -109,7 +109,7 @@ class statemachine():
             process.start()
     
     def homing(self):
-        self.driver.Actuators(970, 1250, 0)
+        self.driver.Actuators(1500, 1250, 0)
         time.sleep(1)
         self.driver.homing()
         self.homeIsSet = True
@@ -158,7 +158,7 @@ class statemachine():
             if not self.hold and self.homeIsSet:
                 match self.state0:                
                     case "init":
-                        self.driver.Actuators(970, 1250, 0)
+                        self.driver.Actuators(1500, 1250, 0)
                         time.sleep(1)
                         self.driver.immediateOperation(30000, 100000)
                         self.state0="loop"
@@ -191,30 +191,36 @@ class statemachine():
                     case "pickup":
                         self.driver.Actuators(2450, 1250, 0)
                         time.sleep(0.3)
-                        self.driver.Actuators(2450, 1850, 0)
+                        self.driver.Actuators(2450, 1950, 0)
                         time.sleep(0.1)
-                        self.driver.Actuators(2450, 1850, 1)
-                        self.driver.Actuators(2450, 1850, 0)
+                        self.driver.Actuators(2450, 1950, 1)
+                        self.driver.Actuators(2450, 1950, 0)
                         time.sleep(0.1)
-                        self.driver.Actuators(1170, 1850, 0)
-                        time.sleep(0.5)
-                        self.driver.immediateOperation(-30000, 100000)
+                        self.driver.Actuators(1500, 1950, 0)
+                        time.sleep(1)
+                        self.driver.immediateOperation(-25631, 100000)
                         self.state0 = "detection"
 
                     case "detection":
+                        for j in range(0, 210, 10):
+                            self.driver.Actuators(1500-j, 1950, 0)
+                            time.sleep(0.035)  
+                        self.driver.Actuators(1290, 1950, 0)
+                        time.sleep(0.5)
                         self.state0 = "analyze"
 
                     
                     case "analyze":
                         # self.driver.Actuators(1170, 1850, 0)
-                        # time.sleep(0.04)
+                        time.sleep(0.5)
                         self.state0 = "cut"
                         
                     case "cut":
-                        for i in range(5, 210, 10):
-                            self.driver.Actuators(1170-i, 1850, 0)
-                            time.sleep(0.035)                        
-                        
+                        for i in range(0, 310, 10):
+                            self.driver.Actuators(max(1290-i, 1000), 1950, 0)
+                            # time.sleep(0.035)                        
+                            time.sleep(0.1)
+                        time.sleep(0.5)  
                         self.state0 = "drop off"
 
                     case "drop off":
@@ -222,13 +228,13 @@ class statemachine():
                         time.sleep(1)
                         self.driver.Actuators(2450, 800, 0)
                         time.sleep(0.5)
-                        self.driver.Actuators(2000, 1250, 0)
-                        time.sleep(0.1)
+                        self.driver.Actuators(1500, 1250, 0)
+                        time.sleep(0.2)
                         self.state0 = "return"
 
                     case "return":
                         
-                        self.driver.immediateOperation(30000, 100000)
+                        self.driver.immediateOperation(25631, 100000)
                         
                         self.state0 = "loop"
                     

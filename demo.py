@@ -16,9 +16,9 @@ class demo():
 
 
     def setupSerialToArduino(self)->None:
-        self.arduino = serial.Serial(port=self.arduinoPort, baudrate=9600, timeout=2)
-        print(self.arduino.readline())
-        print(self.arduino.readline())
+        self.arduino = serial.Serial(port=self.arduinoPort, baudrate=115200, timeout=2)
+        # print(self.arduino.readline())
+        # print(self.arduino.readline())
     
     def writeToArduino(self)->None:
           
@@ -30,9 +30,9 @@ class demo():
             cmd = str(self.bigServo) + "," + str(self.smallServo) + "," + str(self.solenoid)
             print("cmd:", cmd)
             self.arduino.write((cmd + "\r\n").encode('utf-8'))
-            print(self.arduino.readline())
-            print(self.arduino.readline())
-            print()
+            # print(self.arduino.readline())
+            # print(self.arduino.readline())
+            # print()
             
             
 
@@ -77,7 +77,7 @@ class demo():
             
             if self.getUserInput(): 
                     print("grab shrimp")   
-                    self.smallServo=1850
+                    self.smallServo=2000
                     self.bigServo=2450 
                     self.solenoid=1
                     self.writeToArduino()
